@@ -1,0 +1,12 @@
+numpy
+tensorflow
+keras
+pandas
+scikit-learn
+statsmodels
+matplotlib
+tabulate
+pydevd
+debugpy
+maya
+hazelcast-python-client

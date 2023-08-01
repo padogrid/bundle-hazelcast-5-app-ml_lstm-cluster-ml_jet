@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>padogrid.bundle</groupId>
+	<artifactId>bundle-hazelcast-5-app-ml_lstm-cluster-ml_jet</artifactId>
+	<packaging>pom</packaging>
+        <name>${project.artifactId}</name>
+	<version>1.0.0</version>
+	<description>Forecasting in real time via LSTM RNN DNA</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<hazelcast-addon.version>${project.version}</hazelcast-addon.version>
+                <skipTests>true</skipTests>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>Hazelcast Private Snapshot Repository</id>
+			<url>https://repository.hazelcast.com/snapshot/</url>
+		</repository>
+		<repository>
+			<id>Hazelcast Private Release Repository</id>
+			<url>https://repository.hazelcast.com/release/</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+	</dependencies>
+
+	<build>
+		<finalName>${project.artifactId}</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>bundle-sources</id>
+						<phase>package</phase>
+						<goals>
+							<!-- produce source artifact for main project sources -->
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			
+			<!-- bundle distribution -->
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.5.5</version>
+				<executions>
+					<execution>
+						<id>PadoGrid Bundle</id>
+						<goals>
+							<goal>attached</goal>
+						</goals>
+						<phase>package</phase>
+						<configuration>
+							<descriptors>
+								<descriptor>assembly-descriptor.xml</descriptor>
+							</descriptors>
+							<finalName>${project.name}</finalName>
+							<appendAssemblyId>false</appendAssemblyId>
+							<outputDirectory>target/assembly</outputDirectory>
+							<tarLongFileMode>gnu</tarLongFileMode>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>default</id>
+			<modules>
+				<module>data-feed-simulator</module>
+			</modules>
+		</profile>
+	</profiles>
+</project>

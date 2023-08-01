@@ -1,0 +1,1 @@
+This bundle demonstrates how Jet can in real time forecast data using LSTM RNN (Long Short-Term Memory Recurrent Neural Network) via Keras backed by TensorFlow. It includes Python code for building LSTM RNN models using mock data.

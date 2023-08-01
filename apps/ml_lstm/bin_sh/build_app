@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+. $SCRIPT_DIR/.addonenv.sh
+
+EXECUTABLE="`basename $0`"
+
+if [ "$HELP" == "true" ]; then
+cat <<EOF
+
+NAME
+   $EXECUTABLE - Build job jar
+
+SYNOPSIS
+   $EXECUTABLE [-clean] [-?]
+
+   -clean Cleans up the build files after the build completes.
+
+DEFAULT
+   $EXECUTABLE
+
+EOF
+   exit
+fi
+
+pushd $APP_DIR > /dev/null
+mvn install
+popd > /dev/null
+
+# Place the prebuilt models into the data/ml_results dir
+echo "+ Copying prebuilt models into data/ml_results..."
+if [ ! -d "$APP_DIR/data/ml_results" ]; then
+   mkdir -p "$APP_DIR/data/ml_results"
+fi
+cp "$APP_DIR/etc/prebuilt_models/"* "$APP_DIR/data/ml_results/"
+
+# Download required bundles
+if [ ! -d "$APP_DIR/simulator" ]; then
+   echo "+ Installing bundle-none-app-simulator..."
+   install_bundle -download -quiet -force bundle-none-app-simulator
+
+   echo "+ Copying/updating simulator configuration files..."
+   cp "$APP_DIR/etc/simulator"* "$APPS_DIR/simulator/etc/"
+   sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
+
+   echo "+ Building simulator binaries..."
+   pushd $APPS_DIR/simulator > /dev/null
+   mvn package
+   popd > /dev/null
+fi
+
+#
+# Display build information
+#
+cat <<EOF
+
+Workspace: $PADOGRID_WORKSPACE
+
+Build complete.
+
+EOF

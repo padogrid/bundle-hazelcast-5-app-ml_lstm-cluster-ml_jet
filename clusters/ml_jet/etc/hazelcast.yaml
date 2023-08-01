@@ -1,0 +1,80 @@
+
+# IMPORTANT:
+#
+#   padogrid depends on several system properties, which must be specified
+#   in your hazelcast.xml. If you choose to use your own hazelcast.xml file then
+#   make sure to include all system properties found in this file. The following
+#   system properties are required:
+#
+#		"hazelcast-addon.cluster-name"
+#		         Cluster name. Disabled by default.
+#		         See below to see how to enable it.
+#		"hazelcast-addon.management-center"
+#		         MC URL.
+#		"hazelcast-addon.tcp.port"
+#		         TPC port number for the member.
+#		"hazelcast-addon.tcp.members"
+#		         A complete list of TCP member addresses.
+#
+
+hazelcast:
+  cluster-name: ${hazelcast-addon.cluster-name}
+  properties:
+    hazelcast.phone.home.enabled: false
+  jet:
+    enabled: true
+    resource-upload-enabled: true
+  management-center:
+    console-enabled: true
+    scripting-enabled: true
+  user-code-deployment:
+    enabled: true
+    class-cache-mode: ETERNAL
+    provider-mode: LOCAL_AND_CACHED_CLASSES
+
+  network:
+    port:
+      auto-increment: true
+      port: ${hazelcast-addon.tcp.port}
+    outbound-ports:
+      - 0
+    rest-api:
+      enabled: true
+      endpoint-groups:
+        CLUSTER_READ:
+          enabled: false
+        CLUSTER_WRITE:
+          enabled: false
+        HEALTH_CHECK:
+          enabled: true
+        HOT_RESTART:
+          enabled: false
+        WAN:
+          enabled: false
+        DATA:
+          enabled: false
+    join:
+      multicast:
+        enabled: false
+      tcp-ip:
+        enabled: true
+        members: ${hazelcast-addon.tcp.members}
+    socket-interceptor:
+      enabled: false
+
+  map:
+    journal*:
+      event-journal:
+        enabled: true
+        capacity: 10000
+
+  # padogrid serialization
+  serialization:
+    portable-version: 1
+    portable-factories:
+      - factory-id: 1
+        class-name: org.hazelcast.demo.nw.data.PortableFactoryImpl
+      - factory-id: 10000
+        class-name: org.hazelcast.addon.hql.impl.PortableFactoryImpl
+      - factory-id: 30002
+        class-name: padogrid.bundle.hazelcast.data.PortableFactoryImpl
