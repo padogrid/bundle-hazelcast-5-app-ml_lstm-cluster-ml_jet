@@ -43,8 +43,8 @@ if [ ! -d "$APP_DIR/simulator" ]; then
    sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
 
    echo "+ Building simulator binaries..."
-   pushd $APPS_DIR/simulator > /dev/null
-   mvn package
+   pushd $APPS_DIR/simulator/bin_sh > /dev/null
+   ./build_app
    popd > /dev/null
 fi
 

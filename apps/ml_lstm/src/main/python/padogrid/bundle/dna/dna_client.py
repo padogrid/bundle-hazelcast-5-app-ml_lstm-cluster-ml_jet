@@ -22,9 +22,6 @@ Created on May 20, 2021
 
 from datetime import datetime
 import os
-import json
-
-from padogrid.bundle.util.class_util import get_class_name
 
 class Dna():
     '''
@@ -32,9 +29,6 @@ class Dna():
     
     All DNA classes must inherit this class and provide the following attributes:
     
-        feature: Feature (attribute) name. Analogous to key.
-        hazelcast_client: HazelcastClient object. This instance must be provided if running
-                          locally.
         username: User name mainly used to store reports in the report/dna map. If not specified,
                   then the OS login user name is used. If the login user name is not available
                   then it defaults to the user name 'dna'.
@@ -42,9 +36,7 @@ class Dna():
     
     pado = None
     
-    def __init__(self, feature=None, hazelcast_client=None, username=None):
-        self.feature = feature
-        self.hazelcast_client = hazelcast_client
+    def __init__(self, username=None):
         self.username = username
         if self.username == None:
             self.username = os.getlogin()

@@ -59,7 +59,7 @@ def transform_list(input_list):
         input_list input list of strings containing observed values for forecasting
         the next set of values. Each item in the list has the following format:
         
-        country|date1;value1:date2;value2...
+        feature|date1;value1:date2;value2...
         
         where date string is in YYYY-MM-dd
         
@@ -123,7 +123,7 @@ def transform_list(input_list):
             count += 1
             barTokens = i.split("|")
             if len(barTokens) >= 2:
-                country = barTokens[0]
+                feature = barTokens[0]
                 colonTokens = barTokens[1].split(":")
                 str_val = ""
                 value_lists = []
@@ -135,14 +135,14 @@ def transform_list(input_list):
                         value_lists.append([date, value])
     
                 if (len(value_lists) > 0):
-                    input_dict[country] = value_lists   
+                    input_dict[feature] = value_lists   
         
         # Iterate parsed data in input_dict and invoke the forecast routine.
         # Also, build ret_list with forecasted values.
         if len(input_dict) > 0:
             dna = HazelcastLstmDna(working_dir=app_dir)
-            for country, item_list in input_dict.items():
-                model_name = "model_" + country
+            for feature, item_list in input_dict.items():
+                model_name = "model_" + feature
                 forecast_series_list = list()
                 for item in item_list:
                     observed_date_str = item[0]
@@ -165,7 +165,7 @@ def transform_list(input_list):
                         if len(str_pairs) > 0:
                             str_pairs += ":"
                         str_pairs += single_pair
-                str_val = country + "|" + str_pairs
+                str_val = feature + "|" + str_pairs
                 ret_list.append(str_val)
         
         # If ret_list is not set then return the input list. The returned list must match the

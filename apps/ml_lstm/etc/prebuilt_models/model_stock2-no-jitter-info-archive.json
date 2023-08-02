@@ -1,5 +1,6 @@
 {
     "time_type": "date",
+    "time_interval_in_sec": 86400.0,
     "last_time_list": [
         "2022-11-19",
         "2022-11-20",

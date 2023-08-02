@@ -1,18 +1,23 @@
 '''
 Created on May 26, 2021
+Updated on July 17, 2023
 
 TemporalLstmDna applies LSTM to forecast time-series data. It provides the following
 services:
 
-    - Retrieve data from Hazelcast using query predicates
-    - Split the retrieved data into train and test datasets
-    - Fit a pandas Sequential model to the train dataset
+    - Retrieve data by invoking query_map(), which must be implemented by
+      the subclass to return query results using the passed-in query predicate.
+    - Prepare data
+        - Scale dataset using MinMaxScaler()
+        - Transform dataset to a supervised learning set
+    - Split the supervised learning set into train and test datasets.
+    - Fit a pandas Sequential model to the train dataset.
     - Validate the model using the test dataset.
-    - Save the model
-    - Retrieve the model to forecast in real time
-    - Update model info upon completion of generating each forecast
-    - Generate a forecast for an individual observed data point
-    - Generate forecasts for a batched list of observed data points
+    - Save the model along with the scaler.
+    - Retrieve the model to forecast in real time.
+    - Update model info upon completion of generating each forecast.
+    - Generate a forecast for an each observed data point.
+    - Generate forecasts for a batched list of observed data points.
 
 @author: dpark
 '''
@@ -58,37 +63,31 @@ class TemporalLstmDna(Dna):
     There are two "run" methods that perform LSTM on data returned from
     executing queries:
         run_lstm()
-        run_pql()
     
     Using TemporalLstmDna:
         
         1. Implement a subclass that inherits TemporaLstmDna and overrides
-            the value_callback() method that returns the desired values.
-            Also, override the run_lstm() method to invoke the super methods.
-            This is required due to a limitation in Python.
-        
+            the query_map() method that returns the query results in the
+            form of a dictionary containing 'time' and 'value' lists.
+            The 'time' list must contain times in second and the 'value'
+            list must contain numerical values.
+
             class SalesDna(TemporalLstmDna):
                 def __init__(self):
-                    if sys.version_info.major >= 3:
-                        super().__init__()
-                    else:
-                        super(SalesDna, self).__init__()
-                def value_callback(self, key, value):
-                    factor = getattr(value, 'conversionFactor')
-                    qty = tv['quantity']
-                    value = factor * qty
-                    return value
-                def run_lstm(self, jparams, callback=None):
-                    if sys.version_info.major >= 3:
-                        return super().run_lstm(jparams, callback)
-                    else:
-                        return super(SalesDna, self).run_lstm(jparams, callback)
+                    super().__init__(username, working_dir)
+
+                def query_map(self, grid_path, query_predicate, time_attribute=None, time_type='all'):
+                    ...
+                    # data is a dictionary containing 'time' and 'value' lists.
+                    return data
+
+                def record_status(self, json_status):
+                    # json_status contains LSTM model generation status.
         
         2. Deploy SalesDna to the data nodes. For running locally, this step
             is not required.
         
-        3. Login to Hazelcast
-            client = hazelcast.HazelcastClient(cluster_name="jet", portable_factories=PortableFactoryImpl.factories(portable_factories))
+        3. Login to the data source
             
         4. Run SalesDna
             Note that the model is automatically saved in the grid. You can use the 
@@ -100,19 +99,18 @@ class TemporalLstmDna(Dna):
                 dna = TemporalLstmDna(client)
                 country="Greece"
                 jresult = dna.run_lstm_local(grid_path, 
-                    where_clause,
+                    query_predicate,
                     time_attribute='shipDate',
                     value_attribute, 
                     use_saved_model=False, 
-                    model_name='model_'+country, 
-                    callback=value_callback)
+                    model_name='model_'+country)
                 
             4.2 FUTURE: This option is currently unavailable (08/16/2021)
                 To run LSTM remotely in the data nodes (Note that you can set 
                 timeout to a small value and get the results later by checking
                 the DNA run status. See step 5 for details):
                     jresponse = pado.invoke_dna(SalesDna.run_lstm, 
-                        where_clause, 
+                        query_predicate, 
                         value_attribute, 
                         useSavedModel=False, 
                         modelName='SalesDna', 
@@ -138,6 +136,7 @@ class TemporalLstmDna(Dna):
             expected_list = jresult['Expected']
             predicted_list = jresult['Predicted']
             time_list = pd.to_datetime(jresult['Time'])
+            time_interval_in_sec = result['TimeIntervalInSec']
             pyplot.plot(time_list, expected_list)
             pyplot.plot(time_list, predicted_list)
             pyplot.show()
@@ -147,25 +146,25 @@ class TemporalLstmDna(Dna):
     train_scaled = None
     test_scaled = None
     model = None
-    devider = 0
     index = None
     data_raw = None
     data_train = None
     data_test = None
     value_key = None
     
-    # Time attribute name in the value objects queried from Hazelcast.
+    # Time attribute name in the value objects queried from data source
     time_attribute = None
     
-    def __init__(self, feature=None, hazelcast_client=None, username=None, working_dir=None):
+    def __init__(self, username=None, working_dir=None):
         '''
         Constructs a new TemporalLstmDna object.
         
         Args:
+            username: Optional user name. If unspecified, then defaults to the OS user name.
             working_dir: Working directory path. The model and log files are stored relative
                          to this directory.
         '''
-        super().__init__(feature, hazelcast_client, username)
+        super().__init__(username)
         self.working_dir = working_dir
     
     def __prep_data_frame(self, df, time_type=None):
@@ -250,7 +249,7 @@ class TemporalLstmDna(Dna):
         df = pd.DataFrame(data, columns=['time', 'value'])
         return df
    
-    def run_lstm(self, jparams, callback=None):
+    def run_lstm(self, jparams):
         '''
         Fetches data from the grid and runs LSTM.
         '''
@@ -262,7 +261,7 @@ class TemporalLstmDna(Dna):
         return_train_data = False
         time_type = 'all'
         grid_path = None
-        where_clause = None
+        query_predicate = None
         batches = 1
         epochs = 10
         neurons = 10
@@ -276,8 +275,8 @@ class TemporalLstmDna(Dna):
             time_type = jparams['timeType']
         if 'gridPath' in jparams:
             grid_path = jparams['gridPath']
-        if 'where_clause' in jparams:
-            where_clause = jparams['where_clause']
+        if 'query_predicate' in jparams:
+            query_predicate = jparams['query_predicate']
         if 'valueKey' in jparams:
             self.value_key = jparams['valueKey']
         if 'timeAttribute' in jparams:
@@ -306,9 +305,7 @@ class TemporalLstmDna(Dna):
             use_saved_model = jparams['useSavedModel']
         if 'modelName' in jparams:
             model_name = jparams['modelName']
-        if callback == None:
-            callback = self.value_callback
-        data = self.query_map(grid_path, where_clause, callback, self.time_attribute, time_type=time_type)
+        data = self.query_map(grid_path, query_predicate, self.time_attribute, time_type=time_type)
         df = pd.DataFrame(data, columns=['time', 'value'])
         self.df = self.__prep_data_frame(df, time_type=time_type)
 
@@ -362,7 +359,7 @@ class TemporalLstmDna(Dna):
         
         self.series = self.df.squeeze()
         
-                # split data into train and test-sets
+        # split data into train and test-sets
         if test_values_percent >= 1 or test_values_percent <= 0:
             test_values_percent = .2
         n_test = int(len(self.series) * test_values_percent)
@@ -379,7 +376,7 @@ class TemporalLstmDna(Dna):
 
         model_found = False
         if use_saved_model:
-            # load_model_file() overrides self.scaler created by preapare_data()
+            # load_model_file() overrides self.scaler created by prepare_data()
             model, scaler = self.load_model_file(model_name)
             if model != None:
                 print('Using saved model, scaler, model_info: ' + model_name)
@@ -413,7 +410,7 @@ class TemporalLstmDna(Dna):
         predicted_list, expected_list = self.__forecast(self.data_test, n_test, n_batch, n_lag)
         # time_list, expected_list, predicted_list = self.forecast_test_dataset()
         print('   took: %f sec' % (time.time() - start_time))
-        
+
         if return_train_data:
             train_data_list = list()
             for value in self.data_raw[0:self.divider]:
@@ -426,6 +423,8 @@ class TemporalLstmDna(Dna):
         jresult['Expected'] = expected_list
         jresult['Predicted'] = predicted_list
         jresult['Time'] = time_list
+        time_interval_in_sec = (self.index[1]-self.index[0]).total_seconds()
+        jresult['TimeIntervalInSec'] = time_interval_in_sec
 
         # Calculate RMSE
         jresult['Rmse'] = math.sqrt(mean_squared_error(expected_list, predicted_list))
@@ -436,8 +435,10 @@ class TemporalLstmDna(Dna):
         for i in range(len(last_times)):
             last_times_str_list.append(str(last_times[i]))
         last_values = expected_list[-1]
+
         self.model_info = {
             "time_type": self.time_type,
+            "time_interval_in_sec": time_interval_in_sec,
             "last_time_list": last_times_str_list,
             "last_value_list": last_values
         }
@@ -496,17 +497,7 @@ class TemporalLstmDna(Dna):
             report['Info'] = jinfo
         return report
         
-    def value_callback(self, key, value):
-        '''
-        The default value_callback that returns the extracted content from the specified
-        value using the specified key. This method can be overwritten if 
-        '''
-        if type(value) == dict:
-            return value[self.value_key];
-        else:
-            return getattr(value, self.value_key)
-        
-    def query_map(self, grid_path, where_clause, callback, time_attribute=None, time_type='all'):
+    def query_map(self, grid_path, query_predicate, time_attribute=None, time_type='all'):
         '''
         Abstract method that must be implemented by the subclass.
         
@@ -515,14 +506,16 @@ class TemporalLstmDna(Dna):
         and 'value'. 
         
         Args:
-            grid_path: Grid path
-            callback: The callback function with (key, value) arguments. This
-                callback is invoked per record retrieved from the data node.
-                The callback must extract the desired column(s) from the JSON value
-                object, compute as necessary and return the result that is
-                to be used as the raw value. For example, if the value object
-                contains 'Quantity' and 'UnitPrice' then the callback may choose
-                to return 'Quantity' * 'UnitPrice' for the price value.
+            grid_path (str): Grid path.
+            query_predicate: Query predicate, e.g., a where clause in SQL.
+            time_attribute (str): Name of the time attribute in the query result set. Default: 'time'
+            time_type (str): data accumulator by time type. Valid values are
+              'all' use all data points without accumulating. Each data point is individually applied in LSTM
+              'hour' accumulate data by hour
+              'date' accumulate data by date
+              'month' accumulate data by month
+              'year' accumulate data by year
+              Invalid type defaults to 'all'.
 
         Returns:
             Dictionary with 'time' and 'value' attributes. The 'time' attribute contains
@@ -637,7 +630,7 @@ class TemporalLstmDna(Dna):
         It invokes scaler.transform() as opposed to scaler.fit_transform()
         
         Args:
-            est_series - Test dataset
+            test_series - Test dataset
         '''
         # extract raw values
         raw_values = test_series.values
@@ -832,21 +825,15 @@ class TemporalLstmDna(Dna):
         prepared_data = self.prepare_data_test(self.scaler, series, n_lag, n_seq)
         predicted_list = self.__forecast_with_saved_model(series, prepared_data, n_batch, n_lag)
         
+        time_interval_in_sec = self.model_info.get("time_interval_in_sec")
         forecast_time_list = list()
-        # TODO: calculate day_in_sec - 7 days
-        day_in_sec = 60*60*24*7
         observed_in_sec = time.mktime(observed_date.timetuple())
         forecast_in_sec = observed_in_sec
         for i in range(len(predicted_list[0])):  
-            forecast_in_sec = forecast_in_sec + day_in_sec
+            forecast_in_sec = forecast_in_sec + time_interval_in_sec
             forecast_date = datetime.fromtimestamp(forecast_in_sec).date()
             forecast_time_list.append(forecast_date)
             
-        # if time_type == "date":
-        #     forecast_in_sec = observed_in_sec + day_in_sec
-        # elif time_type == "month":
-        #     forecast_in_sec = observed_in_sec + day_in_sec*30
-        
         forecast_series = Series(data=predicted_list[0], index=forecast_time_list)
         
         last_times_str_list = list()
@@ -1049,15 +1036,15 @@ class TemporalLstmDna(Dna):
             json.dump(self.model_info, json_file, indent=4)
             json_file.close()
                   
-    def run_lstm_local(self, grid_path, where_clause=None, time_attribute=None, 
+    def run_lstm_local(self, grid_path, query_predicate=None, time_attribute=None, 
                        value_key=None, use_saved_model=False, model_name='TemporalLstmDna', 
-                       callback=None, return_train_data=False, 
+                       return_train_data=False, 
                        time_type='all', epochs=2, neurons=10):
         '''
         Runs LSTM RNN locally by fetching data from the grid.
         
         Args:
-            time_type - data accumulator by time type. Valid values are
+            time_type (str): data accumulator by time type. Valid values are
               'all' use all data points without accumulating. Each data point is individually applied in LSTM
               'hour' accumulate data by hour
               'date' accumulate data by date
@@ -1067,7 +1054,7 @@ class TemporalLstmDna(Dna):
         '''
         jparams = json.loads('{}')
         jparams['gridPath'] = grid_path
-        jparams['where_clause'] = where_clause
+        jparams['queryPredicate'] = query_predicate
         jparams['returnTrainData'] = return_train_data
         jparams['epochs'] = epochs
         jparams['neurons'] = neurons
@@ -1076,4 +1063,4 @@ class TemporalLstmDna(Dna):
         jparams['timeType'] = time_type
         jparams['valueKey'] = value_key
         jparams['timeAttribute'] = time_attribute
-        return self.run_lstm(jparams, callback)
+        return self.run_lstm(jparams)

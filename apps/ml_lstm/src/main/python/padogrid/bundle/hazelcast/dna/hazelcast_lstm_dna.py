@@ -22,7 +22,6 @@ Created on July 17, 2023
 
 import datetime
 import logging
-import sys
 import time
 import json
 import maya
@@ -36,8 +35,13 @@ logger = logging.getLogger('hazelcast-lstm-dna')
 
 class HazelcastLstmDna(TemporalLstmDna):
     '''
-    HazelcastLstmDna overrides value_callback() to return the default value
-    if the feature is not defined.
+    HazelcastLstmDna implements the following TemporalLstmDna methods.
+    
+    - query_map(): Returns Hazelcast query results in dictionary containing
+                   'time' and 'value' lists. The 'time' list contains times
+                   in second, and the 'value' list contains numerical data.
+    - record_status(): Invoked repeatedly by TemporalLstmDna during the model
+                       generation time to provide the status that can be logged.
     '''
 
     def __init__(self, feature="stock1-jitter", hazelcast_client=None, username=None, working_dir=None):
@@ -53,26 +57,28 @@ class HazelcastLstmDna(TemporalLstmDna):
         '''
         self.hazelcast_client = hazelcast_client
         self.value_key = feature
-        if sys.version_info.major >= 3:
-            super().__init__(feature, hazelcast_client, username, working_dir)
-        else:
-            super(HazelcastLstmDna, self).__init__(feature, hazelcast_client, username, working_dir)
+        super().__init__(username, working_dir)
 
-    def get_data(self, result, callback, time_attribute=None, time_type='all'):
+    def get_data(self, result, time_attribute=None, time_type='all'):
         '''
         Creates a dictionary with 'time' and 'value' keys containing the data from the
         specified result set.
 
         Args:
             result: Data array retrieved from Hazelcast.
-            callback: Callback that filters the dataset.
+            time_attribute (str): Name of the time attribute in the query result set. Default: 'time'
+            time_type (str): data accumulator by time type. Valid values are
+              'all' use all data points without accumulating. Each data point is individually applied in LSTM
+              'hour' accumulate data by hour
+              'date' accumulate data by date
+              'month' accumulate data by month
+              'year' accumulate data by year
+              Invalid type defaults to 'all'.
 
         Returns:
             
-            time_attribute.
         '''
         self.time_type = time_type
-        print('HazelcastLstmDna.create_data_frame_dna() - callback=', callback)
         raw_values = list()
         date_list = list()
 
@@ -84,7 +90,7 @@ class HazelcastLstmDna(TemporalLstmDna):
             record = entry[1]
             if type(record) == HazelcastJsonValue:
                 record = record.loads()
-            value = callback(key, record)
+            value = self.value_callback(key, record)
             if value != None:
                 if type(record) == dict:
                    time_value = record[time_attribute]
@@ -98,20 +104,20 @@ class HazelcastLstmDna(TemporalLstmDna):
         data = {'time': date_list, 'value': raw_values}
         return data
 
-    def query_map(self, grid_path, where_clause, callback, time_attribute=None, time_type='all'):
+    def query_map(self, grid_path, where_clause, time_attribute=None, time_type='all'):
         '''
         Queries the temporal list of the specified identity key and
         returns a DataFrame object that contains time-series data.
 
         Args:
-            grid_path: Grid path
-            callback: The callback function with (key, value) arguments. This
-                callback is invoked per record retrieved from the data node.
-                The callback must extract the desired column(s) from the JSON value
-                object, compute as necessary and return the result that is
-                to be used as the raw value. For example, if the value object
-                contains 'Quantity' and 'UnitPrice' then the callback may choose
-                to return 'Quantity' * 'UnitPrice' for the price value.
+            grid_path (str): Grid path
+            time_type (str): data accumulator by time type. Valid values are
+              'all' use all data points without accumulating. Each data point is individually applied in LSTM
+              'hour' accumulate data by hour
+              'date' accumulate data by date
+              'month' accumulate data by month
+              'year' accumulate data by year
+              Invalid type defaults to 'all'.
 
         Returns:
             DataFrame with 'time' and 'value' columns. The 'time' column
@@ -127,15 +133,23 @@ class HazelcastLstmDna(TemporalLstmDna):
                 result = grid_map.entry_set().result()
             else:
                 result = grid_map.entry_set(sql(where_clause)).result()
-            data = self.get_data(result, callback, time_attribute, time_type)
+            data = self.get_data(result, time_attribute, time_type)
         return data
 
     def value_callback(self, key, value):
         '''
         Computes the value expected in the final raw dataset.
 
-        This callback is invoked for every entry from the query result set to extract
-        the desired attribute from the value.
+        This callback is invoked for every entry from the query result set to
+        extract the desired attribute from the value. The value may come in
+        different forms and this callback is expected to return the proper
+        numerical value. For example, if the value is a JSON object containing
+        several attributes, then this callback may choose to return one
+        of the attributes or a computed value using one or more attributes.
+
+        Example: If the value object contains 'Quantity' and 'UnitPrice' then
+        the callback may choose to return 'Quantity' * 'UnitPrice' for the
+        price value.
 
         Args:
             key: Key
