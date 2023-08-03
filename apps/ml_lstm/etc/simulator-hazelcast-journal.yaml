@@ -87,7 +87,9 @@ publishers:
     enabled: true
     name: stock-publisher
     # weekly (7 days)
-    timeInterval: 604_800_000
+    #timeInterval: 604_800_000
+    # daily (1 day)
+    timeInterval: 86_400_000
     equations:
       equationNames: [stock1-jitter, stock1-no-jitter, stock2-jitter, stock2-no-jitter, stock1-jitter-large]
       # It takes ~1 sec for simulator_forecast (Python) to compute.
