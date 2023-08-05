@@ -11,9 +11,7 @@ NAME
    $EXECUTABLE - Build job jar
 
 SYNOPSIS
-   $EXECUTABLE [-clean] [-?]
-
-   -clean Cleans up the build files after the build completes.
+   $EXECUTABLE [-?]
 
 DEFAULT
    $EXECUTABLE
@@ -22,8 +20,12 @@ EOF
    exit
 fi
 
+# Remove old plugin versions from the workspace
+rm $PADOGRID_WORKSPACE/plugins/ml-lstm-*.jar 2> /dev/null
+
+# Install Jet job jars
 pushd $APP_DIR > /dev/null
-mvn install
+mvn clean install
 popd > /dev/null
 
 # Place the prebuilt models into the data/ml_results dir
