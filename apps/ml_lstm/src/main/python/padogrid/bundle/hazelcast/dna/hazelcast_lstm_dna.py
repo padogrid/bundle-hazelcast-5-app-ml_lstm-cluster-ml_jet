@@ -44,7 +44,7 @@ class HazelcastLstmDna(TemporalLstmDna):
                        generation time to provide the status that can be logged.
     '''
 
-    def __init__(self, feature="stock1-jitter", hazelcast_client=None, username=None, working_dir=None):
+    def __init__(self, feature="stock1-jitter", hazelcast_client=None, username=None, working_dir=None, verbose=False):
         '''
         Constructs a new HazelcastLstmDna object.
 
@@ -57,7 +57,7 @@ class HazelcastLstmDna(TemporalLstmDna):
         '''
         self.hazelcast_client = hazelcast_client
         self.value_key = feature
-        super().__init__(username, working_dir)
+        super().__init__(username, working_dir, verbose)
 
     def get_data(self, result, time_attribute=None, time_type='all'):
         '''

@@ -39,6 +39,7 @@ import argparse
 from padogrid.bundle.hazelcast.dna.hazelcast_lstm_dna import HazelcastLstmDna
 from padogrid.bundle.hazelcast.data.PortableFactoryImpl import PortableFactoryImpl
 import os
+import sys
 import hazelcast
 from matplotlib import pyplot
 import pandas as pd
@@ -110,8 +111,11 @@ parser.add_argument("-?", action="store_true", help="show this help message and 
 parser.add_argument("-m", "--map", default="stocks", help="Hazelcast map that contains observed data")
 parser.add_argument("-f", "--feature", default="stock1-jitter", help="Feature name")
 parser.add_argument("-g", "--generate", action="store_true", help="Generate model. If specified then creates a new model, otherwise, uses the existing model.")
-parser.add_argument("-e", "--epochs", default=10, type=int, help="Epochs")
-parser.add_argument("-n", "--neurons", default=10, type=int, help="Neurons")
+parser.add_argument("-e", "--epochs", default=10, type=int, help="Number of model fit iterations (number of epochs to train the model). This option has no effect for the existing model.")
+parser.add_argument("-n", "--neurons", default=10, type=int, help="Number of neurons in the hidden layer. This option has no effect for the existing model.")
+parser.add_argument("-b", "--batch_size", default=1, type=int, help="Batch size. If the existing model is used, then the specified batch size is overwritten with the existing model's batch size.")
+parser.add_argument("-t", "--test_data_percentage", default=0.2, type=float, help="Test data percentage.")
+parser.add_argument("-v", "--verbose", action="store_true", help="Print interim results.")
 args = vars(parser.parse_args())
 
 # '-?' in addition to '-h', '--help'
@@ -125,19 +129,28 @@ grid_path = args["map"]
 feature = args["feature"]
 is_generate = args["generate"]
 use_saved_model = is_generate != True
+test_data_percentage = args["test_data_percentage"]
+if test_data_percentage <= 0 or test_data_percentage >= 1:
+    print(f'ERROR: Invalid test_data_percentage {test_data_percentage}', file=sys.stderr)
+    exit(1)
 
 # LSTM network parameters
 epochs = args["epochs"]
 neurons = args["neurons"]
+batch_size = args["batch_size"]
+
+is_verbose = args["verbose"]
 
 print()
-print("--------------------------")
-print("     map: " + str(grid_path))
-print(" feature: " + str(feature))
-print("generate: " + str(is_generate))
-print("  epochs: " + str(epochs))
-print(" neurons: " + str(neurons))
-print("--------------------------")
+print("---------------------------------------")
+print("                 map: " + str(grid_path))
+print("             feature: " + str(feature))
+print("            generate: " + str(is_generate))
+print("              epochs: " + str(epochs))
+print("             neurons: " + str(neurons))
+print("          batch_size: " + str(batch_size))
+print("test_data_percentage: " + str(test_data_percentage))
+print("---------------------------------------")
 print()
 
 # Working directory where the model is saved. By default, it assumes you are running
@@ -158,7 +171,7 @@ client = hazelcast.HazelcastClient(cluster_name="ml_jet", portable_factories=Por
 
 # HazelcastLstmDna expects the Hazelcast map to contain JSON objects with the specified
 # numerical feature (attributes).
-dna = HazelcastLstmDna(feature, client, working_dir=working_dir)
+dna = HazelcastLstmDna(feature, client, working_dir=working_dir, verbose=is_verbose)
 
 # --------------------------------------------------------------------------
 # Execute locally
@@ -193,7 +206,10 @@ jresult = dna.run_lstm_local(grid_path, where_clause, time_attribute="time",
                             return_train_data=True,
                             time_type='date',
                             value_key=feature,
-                            epochs=epochs, neurons=neurons)
+                            epochs=epochs,
+                            neurons=neurons,
+                            batch_size=batch_size,
+                            test_data_percentage=test_data_percentage)
 # print(jresult)
 # --------------------------------------------------------------------------
 
@@ -207,10 +223,18 @@ if jresult != None:
         train_time_list = pd.to_datetime(jresult['TrainTime'])
 
     plot_forecasts(train_time_list, train_data_list, time_list, expected_list, predicted_list, time_delta="1 day")
-    print("expected_list")
-    print(expected_list)
-    print("predicted_list")
-    print(predicted_list)
+
+    if is_verbose:
+        print()
+        print("-------------")
+        print("expected_list")
+        print("-------------")
+        print(expected_list)
+        print()
+        print("--------------")
+        print("predicted_list")
+        print("--------------")
+        print(predicted_list)
 
     test_data = expected_list[1:2]
 
@@ -218,10 +242,13 @@ if jresult != None:
         train_rmse = jresult['TrainRmse']
         print('RMSE(train)=%f' % train_rmse)
     rmse = jresult['Rmse']
-    print('RMSE(test)=%f' % rmse)
+    normalized_rmse = jresult['NormalizedRmse']
+    print()
+    print(f'RMSE: {rmse}, Normalized RMSE: {normalized_rmse}')
     # Coefficient of determination or variance score: 1 is perfect prediction
     r2 = r2_score(expected_list, predicted_list)
     print('Coefficient of Determination - R^2 score: %.2f' % r2)
+    print()
 
     ## Display and block
     pyplot.gcf().canvas.manager.set_window_title("PadoGrid LSTM Model Validation")

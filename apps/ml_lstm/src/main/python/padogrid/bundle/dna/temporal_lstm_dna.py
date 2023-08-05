@@ -155,7 +155,7 @@ class TemporalLstmDna(Dna):
     # Time attribute name in the value objects queried from data source
     time_attribute = None
     
-    def __init__(self, username=None, working_dir=None):
+    def __init__(self, username=None, working_dir=None, verbose=False):
         '''
         Constructs a new TemporalLstmDna object.
         
@@ -165,6 +165,7 @@ class TemporalLstmDna(Dna):
                          to this directory.
         '''
         super().__init__(username)
+        self.verbose = verbose
         self.working_dir = working_dir
     
     def __prep_data_frame(self, df, time_type=None):
@@ -262,7 +263,8 @@ class TemporalLstmDna(Dna):
         time_type = 'all'
         grid_path = None
         query_predicate = None
-        batches = 1
+        batch_size = 1
+        test_data_percentage = 0.2
         epochs = 10
         neurons = 10
         use_saved_model = False
@@ -295,46 +297,68 @@ class TemporalLstmDna(Dna):
             jresult['__error'] = error
             return jresult
         
-        if 'batches' in jparams:
-            batches = jparams['batches']
         if 'epochs' in jparams:
             epochs = jparams['epochs']
         if 'neurons' in jparams:
             neurons = jparams['neurons']
+        if 'batchSize' in jparams:
+            batch_size = jparams['batchSize']
+        if 'testDataPercentage' in jparams:
+            test_data_percentage = jparams['testDataPercentage']
         if 'useSavedModel' in jparams:
             use_saved_model = jparams['useSavedModel']
         if 'modelName' in jparams:
             model_name = jparams['modelName']
         data = self.query_map(grid_path, query_predicate, self.time_attribute, time_type=time_type)
+
+        # Truncate data based on batch_size. This is required by the
+        # the last batch then the model will fail and throw an exception.
+        #time_list = data['time']
+        #value_list = data['value']
+        #if batch_size > 1:
+        #    list_size = int (len(time_list)/batch_size) * batch_size + 1
+        #    if list_size != len(time_list):
+        #        data['time'] = time_list[0:list_size]
+        #        data['value'] = value_list[0:list_size]
+
         df = pd.DataFrame(data, columns=['time', 'value'])
         self.df = self.__prep_data_frame(df, time_type=time_type)
 
-        return self.__run(jresult, use_saved_model, model_name, return_train_data, epochs, neurons, info)
+        return self.__run(jresult, use_saved_model, model_name, return_train_data,
+                          epochs, neurons, batch_size, info, test_data_percentage=test_data_percentage)
          
-    def __forecast(self, test, n_test, n_batch=1, n_lag=1):
+    def __forecast(self, test, series_test_start_index, batch_size=1, n_lag=1):
         '''
         Returns forecasts and actual values using the specified test dataset.
         '''
         # make forecasts
-        forecasts = self.make_forecasts(self.model, test, n_batch, n_lag)
+        forecasts = self.make_forecasts(self.model, test, batch_size, n_lag)
         # inverse transform forecasts and test
-        forecasts = self.inverse_transform(self.series, forecasts, self.scaler, n_test+2)
-        print("forecasts")
-        print(forecasts)
-        print()
-        print("test")
-        print(test)
+        forecasts = self.inverse_transform(self.series, forecasts, self.scaler, series_test_start_index)
+        if self.verbose:
+            print("---------")
+            print("forecasts")
+            print("---------")
+            print(forecasts)
+            print()
+            print("----")
+            print("test")
+            print("----")
+            print(test)
         
         # invert the transforms on the output part test dataset so that we can correctly
         # calculate the RMSE scores
         actual = [row[n_lag:] for row in test]
-        print()
-        print(actual)
-        actual = self.inverse_transform(self.series, actual, self.scaler, n_test+2)
+        if self.verbose:
+            print()
+            print("actual")
+            print("------")
+            print(actual)
+        actual = self.inverse_transform(self.series, actual, self.scaler, series_test_start_index)
         return forecasts, actual
         
     def __run(self, jresult, use_saved_model=False, model_name='TemporalLstmDna', 
-              return_train_data=False, n_epochs=2, n_neurons=10, info=None, test_values_percent=.2):
+              return_train_data=False, n_epochs=10, n_neurons=10, batch_size=1, info=None, test_data_percentage=0.2):
         '''
         Runs the LSTM RNN to build the model if use_saved_mode=False or the model does not
         exist. Also, validates the model against the test data split from the dataset.
@@ -358,18 +382,15 @@ class TemporalLstmDna(Dna):
         self.record_status(status)
         
         self.series = self.df.squeeze()
-        
-        # split data into train and test-sets
-        if test_values_percent >= 1 or test_values_percent <= 0:
-            test_values_percent = .2
-        n_test = int(len(self.series) * test_values_percent)
-        self.divider = -n_test
-        print("series: %d, test_data: %d" % (len(self.series), n_test))
-          
-        n_batch = 1      
+
         n_lag = 1
         n_seq = 3
-        self.scaler, self.data_train, self.data_test = self.prepare_data(self.series, n_test, n_lag, n_seq)
+        self.scaler, self.data_train, self.data_test = self.prepare_data(self.series, batch_size, n_lag, n_seq, test_data_percentage=test_data_percentage)
+        # We add n_lag to the length of the train dataset to obtain the
+        # test start index since y(t) is ahead by the lag:
+        # y(t-n_lag) y(t-n_lag+1) ... y(t) y(t+1) ...
+        series_test_start_index = len(self.data_train) + n_lag
+        print("prepared data -> series: %d, batch_size: %d, train_supervised: %d, test_supervised: %d" % (len(self.series), batch_size, len(self.data_train), len(self.data_test)))
        
         # Disable logging steps
         disable_interactive_logging()
@@ -377,66 +398,79 @@ class TemporalLstmDna(Dna):
         model_found = False
         if use_saved_model:
             # load_model_file() overrides self.scaler created by prepare_data()
-            model, scaler = self.load_model_file(model_name)
+            # Note that we must use the batch_size loaded from the model file,
+            # to prevent shape mismatch.
+            model, scaler, batch_temp = self.load_model_file(model_name)
             if model != None:
-                print('Using saved model, scaler, model_info: ' + model_name)
+                print('Using saved model, scaler, model_info... ' + model_name)
                 model_found = True
             else:
-                print('Model not found.')
+                print('Model not found. Creating model...')
+            if batch_temp != None:
+                batch_size = batch_temp
+                    
         # Create model if not found
         if model_found == False:
             # fit (train) the model
             print('Fitting (training) model... epochs=%d, neurons=%d' % (n_epochs, n_neurons))
             start_time = time.time()
             # fit model
-            self.model = self.fit_lstm(self.data_train, n_lag, n_seq, n_batch, n_epochs, n_neurons)
+            self.model, self.rt_model = self.fit_lstm(self.data_train, n_lag, n_epochs, n_neurons, batch_size)
             print('   took: %f sec' % (time.time() - start_time))
         
             # forecast training data
             # print('forecast the entire training dataset...')
             # start_time = time.time()
-            # train_predicted_list, train_expected_list = self.__forecast(self.data_train, n_batch, n_lag)
+            # train_predicted_list, train_expected_list = self.__forecast(self.data_train, batch_size, n_lag)
             # jresult['TrainRmse'] = math.sqrt(mean_squared_error(train_expected_list, train_predicted_list))
             # print('   took: %f sec' % (time.time() - start_time))
 
         # forecast test data
+        print('Forecasting (test)...')
         start_time = time.time()
 
         # self.index is not JSON serializable. 
         # Convert its Timestamp items to string values
-        time_list = list()
-        for ts in self.index[self.divider:]:
-            time_list.append(str(ts))
-        predicted_list, expected_list = self.__forecast(self.data_test, n_test, n_batch, n_lag)
+        predicted_time_list = list()
+        predicted_list, expected_list = self.__forecast(self.data_test, series_test_start_index, batch_size, n_lag)
         # time_list, expected_list, predicted_list = self.forecast_test_dataset()
         print('   took: %f sec' % (time.time() - start_time))
 
+        #test_data_end_index = series_test_start_index + len(predicted_list) + 1
+        test_start_index = series_test_start_index + 1
+        test_data_end_index = test_start_index + len(predicted_list) + 2
+        for ts in self.index[test_start_index:test_data_end_index]:
+            predicted_time_list.append(str(ts))
         if return_train_data:
             train_data_list = list()
-            for value in self.data_raw[0:self.divider]:
+            for value in self.data_raw[0:test_start_index]:
                 train_data_list.append(value)
             jresult['TrainData'] = train_data_list
             train_time_list = list()
-            for ts in self.index[0:self.divider]:
+            for ts in self.index[0:test_start_index]:
                 train_time_list.append(str(ts))
             jresult['TrainTime'] = train_time_list
         jresult['Expected'] = expected_list
         jresult['Predicted'] = predicted_list
-        jresult['Time'] = time_list
+        jresult['Time'] = predicted_time_list
         time_interval_in_sec = (self.index[1]-self.index[0]).total_seconds()
         jresult['TimeIntervalInSec'] = time_interval_in_sec
 
         # Calculate RMSE
-        jresult['Rmse'] = math.sqrt(mean_squared_error(expected_list, predicted_list))
+        rmse = math.sqrt(mean_squared_error(expected_list, predicted_list, squared=False))
+        spread = max(list(map(max, expected_list))) - min(list(map(max, expected_list)))
+        jresult['Rmse'] = rmse
+        jresult['NormalizedRmse'] = rmse / spread
         
         # Store last two (3) values
-        last_times = time_list[-3:]
+        last_times = predicted_time_list[-3:]
         last_times_str_list = list()
         for i in range(len(last_times)):
             last_times_str_list.append(str(last_times[i]))
         last_values = expected_list[-1]
 
         self.model_info = {
+            "batch_size": batch_size,
             "time_type": self.time_type,
             "time_interval_in_sec": time_interval_in_sec,
             "last_time_list": last_times_str_list,
@@ -445,14 +479,15 @@ class TemporalLstmDna(Dna):
         
         status = self.create_status(status='done', start_time=report_start_time, jresult=jresult, jinfo=info)
         self.record_status(status)
-        self.save_model_file(model_name, use_saved_model)
+
+        self.save_model_file(model_name, use_saved_model=use_saved_model)
         return jresult
 
     def record_status(self, json_status):
         '''
         Records status of DNA.
 
-        This method should be overloaded by the subsclass to record the LSTM run status. 
+        This method should be overloaded by the subclass to record the LSTM run status. 
         It is invoked during LSTM phases to provide real-time status that can be monitored
         by the subclass.
         
@@ -646,17 +681,13 @@ class TemporalLstmDna(Dna):
         supervised = self.series_to_supervised(scaled_values, n_lag, n_seq)
         return supervised.values
     
-    def prepare_data(self, series, n_test, n_lag, n_seq):
+    def prepare_data(self, series, batch_size, n_lag, n_seq, test_data_percentage=0.2):
         '''
         Transform series into train and test sets for supervised learning. 
         It invokes scaler.fit_transform() as opposed to scaler.transform()
 
         Args:
             series - Dataset to be split into train and test datasets.
-            n_test - Number of test data points. The reshaped data is split into two.
-                     The test data with n_test size and the train data
-                     with the remaining size. Note that the reshaped data size is smaller
-                     than the passed-in series data due to supervised learning data preparation.
         '''
         # extract raw values
         raw_values = series.values
@@ -669,34 +700,85 @@ class TemporalLstmDna(Dna):
         scaled_values = scaler.fit_transform(diff_values)
         scaled_values = scaled_values.reshape(len(scaled_values), 1)
         # transform into supervised learning problem X, y
+        # Given n_lag=1 and n_seq=3, supervised will contain 4 values in each list
+        # as follows.
+        #    var1(t-1), var1(t), var1(t+1), var1(t_2)
+        # This means the length of supervised will be always less than
+        # series (raw_values) by 4 or by (n_lags+n_seq).
         supervised = self.series_to_supervised(scaled_values, n_lag, n_seq)
         supervised_values = supervised.values
+
+        # original value, i.e., inverted var1(t) is calculated as follows:
+        #   supervised_values[sup_index][1] <=> raw_values[sup_index+1]
+        #   supervised_values[0][1] <=> raw_values[1]
+        #   supervised_values[1][1] <=> raw_values[2]
+        #   supervised_values[2][1] <=> raw_values[3]
+        #   supervised_values[3][1] <=> raw_values[4]
+        #   supervised_values[4][1] <=> raw_values[5]
+        #   supervised_values[5][1] <=> raw_values[6]
+        # 
+        #   supervised_values[len(supervised_values)-1][1] <=> raw_values[len(supervised_values)]
+
         # split into train and test sets
-        train, test = supervised_values[0:-n_test], supervised_values[-n_test:]
+        if test_data_percentage >= 1 or test_data_percentage  <= 0:
+            test_data_percentage = .2
+        n_all = len(supervised_values)
+        n_test = int(n_all * test_data_percentage)
+        n_train = n_all - n_test
+        # Compute the supervised set sizes that match the batch size shape
+        if batch_size > 1:
+            n_train = int(n_train/batch_size)*batch_size + 1
+            n_test = n_all - n_train - batch_size
+            n_test = int(n_test/batch_size)*batch_size + 1
+            n_test += n_train
+        else:
+            n_test = n_all
+
+        train, test = supervised_values[0:n_train], supervised_values[n_train:n_test]
+
+        #   train[len(train)-1][1] <=> raw_values[len(train)]
+        #   test[0][1] <=> raw_values[len(train)+1]
+        #   test[1][1] <=> raw_values[len(train)+2]
+        #   test[len(test)-1][1] <=> raw_values[len(train)+len(test)]
         return scaler, train, test
 
-    def fit_lstm(self, train, n_lag, n_seq, n_batch, nb_epoch, n_neurons):
+    def fit_lstm(self, train, n_lag, n_epoch, n_neurons, batch_size):
         '''
         Fits an LSTM network to the specified train data.
         
         Returns:
-            model - Returns the Squential model.
+            model: Returns the Sequential model built with specified batch size.
+            rt_model: Returns the Sequential model with the batch size of 1. This
+                model must be used to process real-time data.
         '''
         # reshape training into [samples, timesteps, features]
         X, y = train[:, 0:n_lag], train[:, n_lag:]
         X = X.reshape(X.shape[0], 1, X.shape[1])
         # design network
         model = Sequential()
-        model.add(LSTM(n_neurons, batch_input_shape=(n_batch, X.shape[1], X.shape[2]), stateful=True))
+        model.add(LSTM(n_neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
         model.add(Dense(y.shape[1]))
         model.compile(loss='mean_squared_error', optimizer='adam')
         # fit network
-        for i in range(nb_epoch):
-            model.fit(X, y, epochs=1, batch_size=n_batch, verbose=0, shuffle=False)
+        for i in range(n_epoch):
+            model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
             model.reset_states()
-        return model
+
+        # Create rt_model to be used with real-time data. We set the batch size to 1
+        # for rt_model so that we can process a single real-time value at a time. This
+        # requires transferring the weights from the model we just created.
+        if batch_size > 1:
+            rt_model = Sequential()
+            rt_model.add(LSTM(n_neurons, batch_input_shape=(1, X.shape[1], X.shape[2]), stateful=True))
+            rt_model.add(Dense(y.shape[1]))
+            old_weights = model.get_weights();
+            rt_model.set_weights(old_weights);
+            rt_model.compile(loss='mean_squared_error', optimizer='adam')
+        else:
+            rt_model = model
+        return model, rt_model
     
-    def forecast_lstm(self, model, X, n_batch):
+    def forecast_lstm(self, model, X, batch_size):
         '''
         Makes one forecast with the specified LSTM model.
         
@@ -710,11 +792,11 @@ class TemporalLstmDna(Dna):
         # reshape input pattern to [samples, timesteps, features]
         X = X.reshape(1, 1, len(X))
         # make forecast
-        forecast = model.predict(X, batch_size=n_batch)
+        forecast = model.predict(X, batch_size=batch_size)
         # convert to array
         return [x for x in forecast[0, :]]
     
-    def make_forecasts(self, model, test, n_batch, n_lag):
+    def make_forecasts(self, model, test, batch_size, n_lag):
         '''
         Evaluates the persistence model and returns the forecasts.
         '''
@@ -722,13 +804,13 @@ class TemporalLstmDna(Dna):
         for i in range(len(test)):
             X, y = test[i, 0:n_lag], test[i, n_lag:]
             # make forecast
-            forecast = self.forecast_lstm(model, X, n_batch)
+            forecast = self.forecast_lstm(model, X, batch_size)
             # store the forecast
             forecasts.append(forecast)
         return forecasts
     
     
-    def __forecast_with_saved_model(self, last_observed_series, prepared_data, n_batch=1, n_lag=1):
+    def __forecast_with_saved_model(self, last_observed_series, prepared_data, batch_size=1, n_lag=1):
         
         '''
         Forecasts using the saved model.
@@ -740,12 +822,12 @@ class TemporalLstmDna(Dna):
             forecasts - list of forecasts for the specified last observed series.
         '''
         # make forecasts
-        forecasts = self.make_forecasts(self.model, prepared_data, n_batch, n_lag)
+        forecasts = self.make_forecasts(self.model, prepared_data, batch_size, n_lag)
         # inverse transform forecasts and test
         forecasts = self.inverse_transform_forecast(last_observed_series, forecasts, self.scaler)
         return forecasts
     
-    def make_forecasts_with_saved_model_series(self, model_name, series, n_batch=1, n_lag=1, n_seq=1):
+    def make_forecasts_with_saved_model_series(self, model_name, series, batch_size=1, n_lag=1, n_seq=1):
         '''
         Evaluates the specified persistent model. Throws an exception if the model is not found.
         This method uses the saved model and does not update the model info. Hence, it is idempodent.
@@ -778,14 +860,14 @@ class TemporalLstmDna(Dna):
         last_series = Series(index=[last_time_list[-1]], data=[last_value_list[-1]])
         new_series = pd.concat([last_series,series])
         
-        prepared_data = self.prepare_data_test(self.scaler, new_series, n_lag, n_seq)
+        prepared_data = self.prepare_data_test(self.scaler, new_series, batch_size, n_lag, n_seq)
         # prepared_data = self.prepare_data(self.scaler, series, n_lag, n_seq)
-        predicted_list = self.__forecast_with_saved_model(new_series, prepared_data, n_batch, n_lag)
+        predicted_list = self.__forecast_with_saved_model(new_series, prepared_data, batch_size, n_lag)
 
         return new_series, predicted_list
     
     
-    def make_forecasts_with_saved_model_discrete(self, model_name, observed_date, observed_value, n_batch=1, n_lag=1, n_seq=2, time_type="date"):
+    def make_forecasts_with_saved_model_discrete(self, model_name, observed_date, observed_value, batch_size=1, n_lag=1, n_seq=2, time_type="date"):
         '''
         Evaluates the specified persistent model with the specified discrete value.
         Throws an exception if the model is not found. Unlike make_forecasts_with_saved_model_series(), 
@@ -799,7 +881,7 @@ class TemporalLstmDna(Dna):
                               only forecasts. The observed_value is NOT included.
 
         '''
-        self.load_model_file(model_name)
+        self.load_model_file(model_name, load_rt_model=True)
         if self.model == None:
             raise Exception("Specified model file not found [" + model_name + "]")
         if self.scaler == None:
@@ -823,7 +905,7 @@ class TemporalLstmDna(Dna):
         series = Series(value_list)
         
         prepared_data = self.prepare_data_test(self.scaler, series, n_lag, n_seq)
-        predicted_list = self.__forecast_with_saved_model(series, prepared_data, n_batch, n_lag)
+        predicted_list = self.__forecast_with_saved_model(series, prepared_data, batch_size, n_lag)
         
         time_interval_in_sec = self.model_info.get("time_interval_in_sec")
         forecast_time_list = list()
@@ -851,7 +933,7 @@ class TemporalLstmDna(Dna):
         Inverts differenced forecast.
         
         Returns:
-            inverted - Inverted  differecned forecast.
+            inverted - Inverted  differenced forecast.
         '''
         # invert first forecast
         inverted = list()
@@ -861,7 +943,7 @@ class TemporalLstmDna(Dna):
             inverted.append(forecast[i] + inverted[i-1])
         return inverted
     
-    def inverse_transform(self, series, forecasts, scaler, n_test):
+    def inverse_transform(self, series, forecasts, scaler, series_test_start_index):
         '''
         Inverses data transform on forecasts. Unlike inverse_transform_forecast(),
         this method expects the specified series to contain the entire set of data
@@ -873,7 +955,48 @@ class TemporalLstmDna(Dna):
         Returns:
             inverted - Inverted list of forecasts.
         '''
+        '''
+        batch_size = 3
+
+        supervised:
+          var1(t-1)  var1(t)    var1(t+1)  var1(t+2)
+        0 30.920767  30.697177  31.599042  31.575412
+        1 30.697177  31.599042  31.575412  31.009621
+        2 31.599042  31.575412  31.009621  31.645156
+        3 31.575412  31.009621  31.645156  31.070561
+        4 31.009621  31.645156  31.070561  32.121774
+        5 31.645156  31.070561  32.121774  32.561068
+        6 31.070561  32.121774  32.561068  32.289195
+
+        train:
+          var1(t-1)  var1(t)    var1(t+1)  var1(t+2)
+        0 30.920767  30.697177  31.599042  31.575412
+        1 30.697177  31.599042  31.575412  31.009621
+        2 31.599042  31.575412  31.009621  31.645156
+        3 31.575412  31.009621  31.645156  31.070561
+
+        test:
+        4 31.009621  31.645156*  31.070561  32.121774
+
+        series:
+        0  30.920767
+        1  30.697177
+        2  31.599042
+        3  31.575412
+        4  31.009621
+        5  31.645156*
+        6  31.070561
+        7  32.121774
+        8  32.561068
+        9  32.289195
+
+        Give batch_size=3, the observed data for the forecast performed on
+        on the test data is [5] 31.645156. The start index (series_test_start_index)
+        is determined by incrementing the length of train set by 1, i.e. len(train)+1.
+        '''
+
         inverted = list()
+        index = series_test_start_index
         for i in range(len(forecasts)):
             # create array from forecast
             forecast = numpy.array(forecasts[i])
@@ -882,11 +1005,12 @@ class TemporalLstmDna(Dna):
             inv_scale = scaler.inverse_transform(forecast)
             inv_scale = inv_scale[0, :]
             # invert differencing
-            index = len(series) - n_test + i - 1
+            #index = len(series) - n_test + i - 1
             last_ob = series.values[index]
             inv_diff = self.inverse_difference(last_ob, inv_scale)
             # store
             inverted.append(inv_diff)
+            index += 1
         return inverted
 
     def inverse_transform_forecast(self, series, forecasts, scaler):
@@ -916,7 +1040,7 @@ class TemporalLstmDna(Dna):
             inverted.append(inv_diff)
         return inverted
      
-    def evaluate_forecasts(self, test, forecasts, n_lag, n_seq):
+    def evaluate_forecasts(self, test, forecasts, n_seq):
         '''
         Evaluates the RMSE for each forecast time step and prints the RMSE values.
         '''
@@ -954,12 +1078,28 @@ class TemporalLstmDna(Dna):
                             does not exist. If False, then the model is saved regardless
                             of whether the model file exists.
         '''
-        # serialize model to JSON
+        # serialize model to JSON files
         file_path = self.__get_model_dir() + "/" + model_name
-        model_json = self.model.to_json()
+
+        # model
+        model_json_str = self.model.to_json()
+        model_json = json.loads(model_json_str)
         with open(file_path + '.json', 'w') as json_file:
-            json_file.write(model_json)
+            #json_file.write(model_json)
+            json.dump(model_json, json_file, indent=4)
             json_file.close()
+
+        # rt_model
+        try:
+            rt_model_json_str = self.rt_model.to_json()
+            rt_model_json = json.loads(rt_model_json_str)
+            with open(file_path + '-rt.json', 'w') as json_file:
+                #json_file.write(rt_model_json)
+                json.dump(rt_model_json, json_file, indent=4)
+                json_file.close()
+        except:
+            pass
+
         # serialize weights to HDF5
         self.model.save_weights(file_path + '.h5')
            
@@ -979,13 +1119,13 @@ class TemporalLstmDna(Dna):
         if not use_saved_model or (use_saved_model and not os.path.exists(model_info_archive_filepath)):
             with open(model_info_archive_filepath, 'w') as json_file:
                 json.dump(self.model_info, json_file, indent=4)
-                json_file.close()        
+                json_file.close()
         
         print("Saved model: " + file_path)
         print("Saved scaler: " + scaler_file_path)
         print("Model-info: " + model_info_filepath)
         
-    def load_model_file(self, model_name):
+    def load_model_file(self, model_name, load_rt_model=False):
         '''
         Loads the model and its relevant data for the specified model name as follows:
             - model - Sequential model
@@ -998,12 +1138,19 @@ class TemporalLstmDna(Dna):
         # Load json and create model            
         try:
             file_path = self.__get_model_dir() + "/" + model_name
-            json_file = open(file_path + '.json', 'r')
+            if load_rt_model:
+                json_file_path = file_path + '-rt.json'
+            else:
+                json_file_path = file_path + '.json'
+            if os.path.isfile(json_file_path) == False:
+                return None, None, None
+            json_file = open(json_file_path, 'r')
             loaded_model_json = json_file.read()
             json_file.close()
             loaded_model = model_from_json(loaded_model_json)
-            # load weights into new model
+            # load weights into the loaded model
             loaded_model.load_weights(file_path + '.h5')
+            loaded_model.compile(loss='mean_squared_error', optimizer='adam')
             self.model = loaded_model
             
             scaler_file_path = file_path + '.scaler'
@@ -1013,10 +1160,14 @@ class TemporalLstmDna(Dna):
             with open(model_info_filepath) as json_file:
                 self.model_info = json.load(json_file)
                 json_file.close()
+            if 'batch_size' in self.model_info:
+                batch_size = self.model_info['batch_size']
+            else:
+                batch_size = None
             
-            print("Loaded model from disk: " + file_path)
-            print("Loaded scaler from disk: " + scaler_file_path)
-            return self.model, self.scaler
+            print("Loaded model from file system: " + file_path)
+            print("Loaded scaler from file system: " + scaler_file_path)
+            return self.model, self.scaler, batch_size
 
         except:
             print("ERROR: Exception occurred while loading model [" + model_name + "]")
@@ -1039,7 +1190,10 @@ class TemporalLstmDna(Dna):
     def run_lstm_local(self, grid_path, query_predicate=None, time_attribute=None, 
                        value_key=None, use_saved_model=False, model_name='TemporalLstmDna', 
                        return_train_data=False, 
-                       time_type='all', epochs=2, neurons=10):
+                       time_type='all',
+                       epochs=10, neurons=10,
+                       batch_size=1,
+                       test_data_percentage=0.2):
         '''
         Runs LSTM RNN locally by fetching data from the grid.
         
@@ -1051,6 +1205,21 @@ class TemporalLstmDna(Dna):
               'month' accumulate data by month
               'year' accumulate data by year
               Invalid type defaults to 'all'.
+            epochs: Number of epochs to train the model.
+            neurons: Dimensionality of the output space or a number units in the hidden layer.
+            batch_size: Batch size. The number of batches is the number of samples
+                divided by batch_size. The actual number of samples is determined
+                by batch_size as follows.
+                    int((supervised_dataset) / batch_size) * batch_size + 1
+            test_data_percentage: The amount of the test dataset in decimal percentage to be
+                used for testing the LSTM model after it is fitted with the train dataset. 
+                The train and test datasets are obtained from the supervised dataset and
+                not from the query result set. The supervised dataset is split into train
+                and test datasets by applying this percentage. Due to the multi-dimensionality
+                of supervised dataset and the required dataset shape determined by the batch
+                size, the sum of train and test dataset sizes is always smaller than the query
+                result set size. In fact, their sizes vary greatly depending on the batch
+                size. Valid range is (0, 1). Defaults to 0.2.
         '''
         jparams = json.loads('{}')
         jparams['gridPath'] = grid_path
@@ -1058,6 +1227,8 @@ class TemporalLstmDna(Dna):
         jparams['returnTrainData'] = return_train_data
         jparams['epochs'] = epochs
         jparams['neurons'] = neurons
+        jparams['batchSize'] = batch_size
+        jparams['testDataPercentage'] = test_data_percentage
         jparams['useSavedModel'] = use_saved_model
         jparams['modelName'] = model_name
         jparams['timeType'] = time_type

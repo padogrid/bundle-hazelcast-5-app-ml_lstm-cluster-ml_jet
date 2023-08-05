@@ -185,7 +185,7 @@ public class ForexRecord implements VersionedPortable
 		writer.writeDouble("askLow", askLow);
 		writer.writeDouble("askClose", askClose);
 		writer.writeDouble("askVolume", askVolume);
-		writer.writeUTF("nextAvgUp", nextAvgUp);
+		writer.writeString("nextAvgUp", nextAvgUp);
 	}
 
 	@Override
@@ -204,7 +204,7 @@ public class ForexRecord implements VersionedPortable
 		this.askLow = reader.readDouble("askLow");
 		this.askClose = reader.readDouble("askClose");
 		this.askVolume = reader.readDouble("askVolume");
-		this.nextAvgUp = reader.readUTF("nextAvgUp");
+		this.nextAvgUp = reader.readString("nextAvgUp");
 	}
     
 	@Override

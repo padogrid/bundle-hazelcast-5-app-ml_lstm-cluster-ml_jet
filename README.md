@@ -79,26 +79,37 @@ This bundle uses the LSTM tutorial example provided by [1] with several key addi
 - The LSTM tutorial uses `fit_transform()` for both train and test sets of data. `fit_transform()` scales data and learns the scaling parameters of that data. By applying it to the test data, the tutorial introduces bias to the test data since it is also fitting the test data [3]. Normally, we want the test data to be a completely new and a surprise set for the model. If you want to remove this bias, then instead of invoking `TemporalLstmDna.prepare_data()`, separately invoke `TemporalLstmDna.prepare_data_train()`  and `TemporalLstmDna.prepare_date_test()`. The former performs fit and transform, i.e., invokes `fit_transform()` and the latter performs transform only, i.e., invokes `transform()`. 
 
 - To deploy and use the model against real-time data, the model and its relevant data are stored in the grid.
+
   - Model - the LSTM model
   - Scaler - the scaler for transforming data
   - Last observed data - the last observed data applied to the model
+  - Batch size - batch size used to fit the model.
+  - RT Model - the model with batch size 1 for forecasting real-time data
 
 - The stored model is applied to the data updates to generate forecasts in real time. This is done by invoking one of the following methods:
+
   - **make_forecasts_with_saved_model_series()** - Forecast the specified series of observed data.
   - **make_forecasts_with_saved_model_discrete()** - Forecast the specified observed data point.
+
+- The supervised datasets are automatically reshaped based on the specified batch size. This is an essential step as the underlying Tensorflow may fail if the batch size does not evenly fit in the supervised datasets.
+
+  - This automation allows you to freely change the batch size without concern to shape mismatch failures. 
+  - The batch size is persisted such that the existing models are reinstated seamlessly.
+  - The batch size automatically resets to 1 for real-time data.
 
 - The DNA implementation closely follows the [DNA (Data Node App)](https://github.com/netcrest/pado/tree/develop/pado-rpc) guidelines defined by [Pado](https://github.com/netcrest/pado), abeit its hardware choice is limited to the same machine as the data node imposed by the Jet RPC mechanics.
 
 - There is room for improving performance as follows.
+
   - In `SimulatorForecastJob`, find a way to discard empty values after filtering from moving forward in the DAG. Some empty values are mysteriously sent to the Python handler just to get rejected.
   - Each DNA execution performs a file IO operation to read and write the target model. This is an expensive operation that can be improved by adding a caching service.
 
 - The Python function handler was originally written with Jet 4.5, which has the following limitations that may hamper its usefulness. Its `gRPC Service` may be a better choice. (It is likely that Hazelcast Platform 5.x has inherited these limitations.)
   - The `transform_list()` function argument is always a list of strings.
   - The list argument is constructed by Jet by aggregating results from the local parallelization. If the string values contain commas, the list it creates contains mangled values that are unparsable. This prevents the use of JSON string values.
-  - The `transform_list()` function must always return a list with the same number of elements as the input list. Otherwise, Jet throws an exception and the results will be lost. At that point of time, the DAG position will reset to the top and continue from there.
+  - By design, the `transform_list()` function must always return a list with the same number of elements as the input list. Otherwise, Jet throws an exception and the results will be lost. At that point of time, the DAG position will reset to the top and continue from there.
 
-- This bundle creates two (2) jar files: `ml-lstm-1.0.0.jar` and `ml-lstm-1.0.0-data.jar`. `ml-lstm-1.0.0.jar` contains all the classes including the job and data classes to be submitted to Jet by the user. `ml-lstm-1.0.0-data.jar` contains only data classes and is automatically deployed to the workspace by the build step in the [Preparing Environment](#preparing-environment) section..
+- This bundle creates two (2) jar files: `ml-lstm-1.0.1.jar` and `ml-lstm-1.0.1-data.jar`. `ml-lstm-1.0.1.jar` contains all the classes including the job and data classes to be submitted to Jet by the user. `ml-lstm-1.0.1-data.jar` contains only data classes and is automatically deployed to the workspace by the build step in the [Preparing Environment](#preparing-environment) section..
 
 **Binaries:**
 
@@ -107,10 +118,10 @@ This bundle uses the LSTM tutorial example provided by [1] with several key addi
 ├── apps
 │   └── ml_lstm
 │       └── target
-│           └── ml-lstm-1.0.0.jar
+│           └── ml-lstm-1.0.1.jar
 ├── lib
 └── plugins
-    └── ml-lstm-1.0.0-data.jar
+    └── ml-lstm-1.0.1-data.jar
 ```
 
 **Source Code:**
@@ -271,11 +282,12 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local --help
 Output:
 
 ```console
-usage: forecast_test_local.py [-h] [-?] [-m MAP] [-f FEATURE] [-g] [-e EPOCHS] [-n NEURONS]
+usage: forecast_test_local.py [-h] [-?] [-m MAP] [-f FEATURE] [-g] [-e EPOCHS] [-n NEURONS] [-b BATCH_SIZE]
+                              [-t TEST_DATA_PERCENTAGE] [-v]
 
 Plots observed and forecasted data for the specified Hazelcast map. It generates an LSTM model for the specified
-map that contains observed data if the model is not already generated. To force generating a model, specify the '
---generate' option. It will overwrite the previously generated model.
+map that contains observed data if the model is not already generated. To force generating a model, specify the
+'--generate' option. It will overwrite the previously generated model.
 
 options:
   -h, --help            show this help message and exit
@@ -283,12 +295,20 @@ options:
   -m MAP, --map MAP     Hazelcast map that contains observed data (default: stocks)
   -f FEATURE, --feature FEATURE
                         Feature name (default: stock1-jitter)
-  -g, --generate        Generate model. If specified then creates a new model, otherwise, uses the existing model.
-                        (default: False)
+  -g, --generate        Generate model. If specified then creates a new model, otherwise, uses the existing
+                        model. (default: False)
   -e EPOCHS, --epochs EPOCHS
-                        Epochs (default: 10)
+                        Number of model fit iterations (number of epochs to train the model). This option has no
+                        effect for the existing model. (default: 10)
   -n NEURONS, --neurons NEURONS
-                        Neurons (default: 10)
+                        Number of neurons in the hidden layer. This option has no effect for the existing model.
+                        (default: 10)
+  -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        Batch size. If the existing model is used, then the specified batch size is overwritten
+                        with the existing model's batch size. (default: 1)
+  -t TEST_DATA_PERCENTAGE, --test_data_percentage TEST_DATA_PERCENTAGE
+                        Test data percentage. (default: 0.2)
+  -v, --verbose         Print interim results. (default: False)
 ```
 
 Try the default feature using the included models.
@@ -338,7 +358,7 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 
 ### 4. Submit job
 
-Submit  `ml-lstm-1.0.0.jar` that you created during the build steps. It contains `SimulatorForecastJob` (Java) that intakes streamed data to accumulate `time` by date interval and fit the resultant average value to the model to forecast the next data point. We could simply select the last value in the data interval, but if the data interval is too large then taking the last value may significantly skew the forecast results as it continously drifts away from the dataset that the model was originally created with. The accumulator also serves our demonstration purpose for showing a glimpse of how we can aggregate streamed data.
+Submit  `ml-lstm-1.0.1.jar` that you created during the build steps. It contains `SimulatorForecastJob` (Java) that intakes streamed data to accumulate `time` by date interval and fit the resultant average value to the model to forecast the next data point. We could simply select the last value in the data interval, but if the data interval is too large then taking the last value may significantly skew the forecast results as it continously drifts away from the dataset that the model was originally created with. The accumulator also serves our demonstration purpose for showing a glimpse of how we can aggregate streamed data.
 
 ```bash
 # Make sure to first unset CLASSPATH and reset it by switching into ml_jet to prevent
@@ -346,7 +366,7 @@ Submit  `ml-lstm-1.0.0.jar` that you created during the build steps. It contains
 export CLASSPATH=
 switch_cluster ml_jet
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.0.jar --help
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar --help
 ```
 
 Output:
@@ -364,7 +384,7 @@ Let's submit `SimulatorForecastJob` with the default feature, `stock1-jitter`.
 
 ```bash
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.0.jar
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
 ```
 
 The submitted job forms the following DAG.
@@ -466,7 +486,7 @@ If you see `ClassNotFoundException` then unset `CLASSPATH` and reset it by switc
 export CLASSPATH=
 switch_cluster ml_jet
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.0.jar
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
 ```
 
 ### 2. How do I execute SQL in Magement Center?
@@ -535,7 +555,7 @@ vi workspace.code-workspace
         "path": "bash",
         "args": [
           "--init-file",
-          ".workspace/workspace_vscode.sh"
+          "<workspace-dir>/.vscode/workspace_vscode.sh"
         ]
       }
     },
@@ -545,7 +565,7 @@ vi workspace.code-workspace
         "path": "bash",
         "args": [
           "--init-file",
-          ".workspace/workspace_vscode.sh"
+          "<workspace-dir>/.vscode/workspace_vscode.sh"
         ]
       }
     },
@@ -577,7 +597,7 @@ PYTHONPATH=$PADOGRID_WORKSPACES_HOME/bundle-hazelcast-5-app-ml_lstm-cluster-ml_j
 1. [Time Series LSTM](https://machinelearningmastery.com/multi-step-time-series-forecasting-long-short-term-memory-networks-python/) - Describes multi-step LSTM (Long Short-Term Memory) Networks.
 1. [Beginner’s Guide to RNN & LSTMs](https://medium.com/@humble_bee/rnn-recurrent-neural-networks-lstm-842ba7205bbf) - Describes RNN and LSTM in simple language.
 1. [Understanding LSTMs](https://colah.github.io/posts/2015-08-Understanding-LSTMs/) - Provides a high level overview of LSTM.
-1. [What and why behind fit_gransform() and transform() in scikit-learn!](https://towardsdatascience.com/what-and-why-behind-fit-transform-vs-transform-in-scikit-learn-78f915cf96fe) - Explains why we use `fit_transform()` on training data but `transform()` on the test data.
+1. [What and why behind fit_transform() and transform() in scikit-learn!](https://towardsdatascience.com/what-and-why-behind-fit-transform-vs-transform-in-scikit-learn-78f915cf96fe) - Explains why we use `fit_transform()` on training data but `transform()` on the test data.
 1. [FOREX_eurusd-minute-High, OpenML](https://www.openml.org/d/41845) - Historical price data of the FOREX EUR/USD from Dukascopy (2018-01-01 to 2018-12-13). Each row represents one candlesitck of one minute. This is for a future reference. Its dataset cannot be used for this bundle at this time.
 1. *Installing and Running VS Code in PadoGrid, PadoGrid Manual*, <https://github.com/padogrid/padogrid/wiki/VS-Code>
 1. *Data Feed Simulator*, PadoGrid Bundles, <https://github.com/padogrid/bundle-none-app-simulator>
