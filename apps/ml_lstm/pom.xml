@@ -12,6 +12,8 @@
 		<maven.compiler.target>11</maven.compiler.target>
 		<maven.compiler.source>11</maven.compiler.source>
 		<hazelcast.version>5.3.1</hazelcast.version>
+		<padogrid.version>0.9.28-SNAPSHOT</padogrid.version>
+		<paho.version>1.2.5</paho.version>
 		<skipTests>true</skipTests>
 	</properties>
 
@@ -50,6 +52,16 @@
 			<artifactId>commons-cli</artifactId>
 			<version>1.5.0</version>
 		</dependency>
+		<dependency>
+			<groupId>padogrid.addon</groupId>
+			<artifactId>padogrid-mqtt</artifactId>
+			<version>${padogrid.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.paho</groupId>
+			<artifactId>org.eclipse.paho.mqttv5.client</artifactId>
+			<version>${paho.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -85,6 +97,7 @@
 							<classifier>data</classifier>
 							<includes>
 								<include>**/padogrid/bundle/hazelcast/data/*</include>
+                        <include>**/padogrid/mqtt/connectors/*</include>
 							</includes>
 							<outputDirectory>${env.PADOGRID_WORKSPACE}/plugins</outputDirectory>
 						</configuration>
