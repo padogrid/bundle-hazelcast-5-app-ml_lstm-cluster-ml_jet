@@ -36,15 +36,17 @@
 	</connection-strategy>
 
 	<!-- padogrid serialization -->
+   <!--
 	<serialization>
 		<portable-version>1</portable-version>
 		<portable-factories>
 			<portable-factory factory-id="10000">
 	                org.hazelcast.addon.hql.impl.PortableFactoryImpl
-	            </portable-factory>
+         </portable-factory>
 			<portable-factory factory-id="30002">
 	                org.hazelcast.data.PortableFactoryImpl
-	           </portable-factory>
+         </portable-factory>
 		</portable-factories>
 	</serialization>
+   -->
 </hazelcast-client>

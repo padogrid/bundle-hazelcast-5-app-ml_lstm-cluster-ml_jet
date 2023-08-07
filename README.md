@@ -42,18 +42,19 @@ apps
     │   └── setenv.sh
     ├── etc
     │   ├── hazelcast-client.xml
-    │   ├── prebuilt_models
+    │   ├── mqttv5-hazelcast.yaml
+    │   ├── prebuilt_models/
     │   ├── simulator-hazelcast-journal.yaml
     │   └── simulator-hazelcast.yaml
     ├── pom.xml
     └── src
         └── main
-            ├── java
-            └── python
+            ├── java/
+            └── python/
 clusters
 └── ml_jet
-    ├── bin_sh
-    └── etc
+    ├── bin_sh/
+    └── etc/
 ```
 
 ## Python Installation

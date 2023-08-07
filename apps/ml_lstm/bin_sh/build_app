@@ -20,6 +20,15 @@ EOF
    exit
 fi
 
+# Set the current PadoGrid version in pom.xml
+pushd $APP_DIR > /dev/null
+sed -i$__SED_BACKUP -e "s|<padogrid.version>.*$|<padogrid.version>$PADOGRID_VERSION</padogrid.version>|g" pom.xml
+popd > /dev/null
+
+# Install the required padogrid packages to the local repo
+installMavenPadogridJar padogrid-common
+installMavenPadogridJar padogrid-mqtt
+
 # Remove old plugin versions from the workspace
 rm $PADOGRID_WORKSPACE/plugins/ml-lstm-*.jar 2> /dev/null
 
@@ -42,6 +51,7 @@ if [ ! -d "$APP_DIR/simulator" ]; then
 
    echo "+ Copying/updating simulator configuration files..."
    cp "$APP_DIR/etc/simulator"* "$APPS_DIR/simulator/etc/"
+   sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
    sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
 
    echo "+ Building simulator binaries..."
