@@ -1,0 +1,79 @@
+#
+# Copyright (c) 2023 Netcrest Technologies, LLC. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#
+# A virtual cluster for bridging MQTT to Hazelcast via the HazelcastJsonConnector plugin,
+# which streams MQTT topics into Hazelcast maps. The HazelcastJsonConnector plugin converts
+# the topic names to map names by replacing '/' with '_' (underscore).
+#
+
+# true to enable the cluster service, false to disable.
+# Default: true
+enabled: true
+
+# Default cluster name.
+defaultCluster: edge
+
+plugins:
+  # Data feed plugin APP that generates simulated data
+  - name: hazelcast
+    description: Bridges MQTT with Hazelcast. MQTT messages are put into the corresponding Hazelcast maps.
+    enabled: true
+    context: CLUSTER
+    className: padogrid.mqtt.connectors.HazelcastJsonConnector
+
+    properties:
+      # Comma separated list of topic filters.
+      # Default: # (all topics)
+      - key: topicFilters
+        value: journal
+
+      # Map key type in String type.
+      #   SEQUENCE - Key sequence number starting from 1.  
+      #   UUID - UUID
+      #   TIME - Time in 'yyyy-MM-dd'T'HH:mm:ss.SSSZ'
+      #   KEY - Key used to extract the value from the JSON object. If the key does not exist, then
+      #         defaults to SEQUENCE.
+      - key: keyType
+        value: SEQUENCE
+
+      # Hazelcast client configuration file path. Can be relative to the working directory, i.e.,
+      # directory in which 'vc_start' started.
+      - key: hazelcast.client.config
+        value: ${env:PADOGRID_WORKSPACE}/apps/ml_lstm/etc/hazelcast-client.xml
+
+# Tag name that describes this JVM.
+# Default: cluster-tag
+tag: edge
+
+# Cluster probe delay interval in milliseconds. The cluster service periodically
+# probes the endpoints defined in each cluster.
+# Default: 5000 
+probeDelay: 5000
+
+clusters:
+  - name: edge
+    enabled: true
+    autoConnect: true
+    fos: 0
+    publisherType: ROUND_ROBIN
+    
+    # Hazelcast connector. Enable or disable in the 'plugins' element.
+    pluginName: hazelcast
+
+    connections:
+      - connection:
+          serverURIs: [tcp://localhost:1883-1885]
