@@ -57,6 +57,8 @@ clusters
     └── etc/
 ```
 
+---
+
 ## Python Installation
 
 The following is an Anaconda example. This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast.
@@ -69,6 +71,8 @@ pip install -r src/main/python/requirements.txt
 ```
 
 [Download and Install Anaconda](https://www.anaconda.com/products/individual)
+
+---
 
 ## Implementation Notes
 
@@ -166,6 +170,8 @@ src
         └── requirements.txt
 ```
 
+---
+
 ## Preparing Environment
 
 1. Make sure you have Python installed as described in the [Python Installation](#python-installation) section.
@@ -191,11 +197,15 @@ add_member -count 2
 show_cluster
 ```
 
+---
+
 ## Using LSTM App
 
 After you have gone through the [Startup Sequence](#startup-sequence) section, try your own datasets to forecast future events by following the steps provided in the link below.
 
 [Using LSTM App](README_USING_LSTM_APP.md)
+
+---
 
 ## Troubleshooting and Debugging 
 
@@ -219,12 +229,16 @@ is_debug_enabled = True
 ...
 ```
 
+---
+
 ## Hazelcast Jet Performance Observations
 
 1. Connecting Management Center (MC) to Hazelcast cluster spawns an extremely large number of threads. It is typical to see 450-780 threads with MC vs. 120-128 threads without MC.
 1. Hazelcast members use excessive CPUs at idle. It is typical for each member to consume 15-25% of CPU with a Python job submitted without having any activities. For our demo, no activities means that the simulator was not publishing real-time data during the idle time. This means the Python function in the Jet pipeline is never invoked at idle.
 1. Canceling all jobs brings each member's CPU down to 0.2% as expected. The high number of threads, on the other hand, remains the same with MC still running.
 1. Stopping MC immediately brings down the number of threads to 120-128 threads with a single Python job running and 103-113 threads without any job running.
+
+---
 
 ## Startup Sequence
 
@@ -463,12 +477,62 @@ Use `top` to monitor `java` and `python` processes as follows.
 top -pid $(pgrep -d " " "java|python" |sed "s/ / -pid /g")
 ```
 
+---
+
+## Integrating MQTT Virtual Cluster
+
+This bundle includes an MQTT virtual cluster connector for briding MQTT and Hazelcast. The included `HazelcastJsonConnector` bridges MQTT topics to Hazelcast maps by converting the topic names by replacing `/` with `_` (underscore) and supplying unique Hazelcast map keys. The map keys come in the form of sequential numbers, UUID, time, or values extracted from the JSON payloads.
+
+To use the MQTT virtual cluster named `edge`, follow the steps below.
+
+
+### 1. Install and start MQTT virtual cluster
+
+```bash
+# Create the default cluster, mymosquitto
+make_cluster -product mosquitto
+
+# Start the virtual cluster
+start_cluster -cluster mymosquitto
+```
+
+### 2. Ingest intial data to Hazelcast cluster
+
+```bash
+cd_app simulator/bin_sh
+./simulator -simulator-config ../etc/simulator-hazelcast.yaml
+```
+
+### 3. Submit job
+
+```bash
+cd_app ml_lstm
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
+```
+
+### 4. Ingest real-time data to MQTT virtual cluster
+
+```bash
+cd_app simulator/bin_sh
+./simulator -simulator-config ../etc/simulator-mqtt-journal.yaml
+```
+
+### 5. Plot real-time forecasts
+
+```bash
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter
+```
+
+---
+
 ## Teardown
 
 ```bash
 # Stop Hazelcast cluster and Management Center
 stop_cluster -all
 ```
+
+---
 
 ## Tips
 
@@ -593,6 +657,8 @@ cat .env
 ```properties
 PYTHONPATH=$PADOGRID_WORKSPACES_HOME/bundle-hazelcast-5-app-ml_lstm-cluster-ml_jet/apps/ml_lstm/src/main/python
 ```
+
+---
 
 ## References
 1. [Time Series LSTM](https://machinelearningmastery.com/multi-step-time-series-forecasting-long-short-term-memory-networks-python/) - Describes multi-step LSTM (Long Short-Term Memory) Networks.
