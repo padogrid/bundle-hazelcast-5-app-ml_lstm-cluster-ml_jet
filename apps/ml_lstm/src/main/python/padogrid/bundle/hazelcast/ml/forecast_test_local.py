@@ -48,9 +48,9 @@ from sklearn.metrics import r2_score
 # Disable CPU warning message
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
         
-def plot_forecasts(train_time_list, train_data_list, time_list, expected_list, forecasts, time_type="date", time_delta="1 day"):
+def plot_forecasts(train_time_list, train_data_list, time_list, test_data_list, forecasts, time_type="date", time_delta="1 day"):
     '''
-    Plots the specified train and test (expected) datasets in addition to the specified forecasts.
+    Plots the specified train and test datasets in addition to the specified forecasts.
     '''
     
     # Label and plot
@@ -59,7 +59,14 @@ def plot_forecasts(train_time_list, train_data_list, time_list, expected_list, f
     ax.set(xlabel='Time', ylabel='Value')
 
     # Plot the entire train data in blue
-    ax.plot(train_time_list, train_data_list, color='blue', label="Observed")
+    ax.plot(train_time_list, train_data_list, color='blue', label="Train")
+
+    # Plot the entire test data in black. We need to add the last value
+    # in the train data list as the first value in the test data list
+    # so that we can plot the test data starting from that value.
+    test_time_list = pd.to_datetime(train_time_list[-1:]).append(time_list)
+    test_data_list2 = train_data_list[-1:] + test_data_list
+    ax.plot(test_time_list, test_data_list2, color='black', label="Test")
     
     # Get the last values in the train list. It is the staring point for plotting
     # the forecasted values.
@@ -87,16 +94,13 @@ def plot_forecasts(train_time_list, train_data_list, time_list, expected_list, f
             xaxis += [time_value] 
         # insert the last value in the yaxis list. The last value is the starting point
         # for this iteration of forecasted values
-        yaxis = [yvalue] + expected_list[i]
-        # Plot test data in black
-        ax.plot(xaxis, yaxis, color='black')
         yaxis = [yvalue] + forecasts[i]
         #Plot forecast data in red
         ax.plot(xaxis, yaxis, color='red')
         xvalue = time_list[i]
-        yvalue = expected_list[i][0]
+        yvalue = test_data_list[i]
     
-    ax.legend(["Observed", "Train", "Forecast"], loc = "upper left")
+    ax.legend(["Train", "Test", "Forecast"], loc = "upper left")
     fig.canvas.draw()
     fig.canvas.flush_events()
 
@@ -218,25 +222,25 @@ if jresult != None:
     predicted_list = jresult['Predicted']
     time_list = pd.to_datetime(jresult['Time'])
 
-    if 'TrainData' in jresult:
-        train_data_list = jresult['TrainData']
-        train_time_list = pd.to_datetime(jresult['TrainTime'])
+    train_data_list = jresult['TrainData']
+    train_time_list = pd.to_datetime(jresult['TrainTime'])
+    test_data_list = jresult['TestData']
 
-    plot_forecasts(train_time_list, train_data_list, time_list, expected_list, predicted_list, time_delta="1 day")
+    plot_forecasts(train_time_list, train_data_list, time_list, test_data_list, predicted_list, time_delta="1 day")
 
     if is_verbose:
         print()
         print("-------------")
-        print("expected_list")
+        print("test_data_list")
         print("-------------")
-        print(expected_list)
+        print(test_data_list)
         print()
         print("--------------")
         print("predicted_list")
         print("--------------")
         print(predicted_list)
 
-    test_data = expected_list[1:2]
+    #test_data = expected_list[1:2]
 
     if 'TrainRmse' in jresult:
         train_rmse = jresult['TrainRmse']

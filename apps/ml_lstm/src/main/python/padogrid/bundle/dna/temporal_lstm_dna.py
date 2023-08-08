@@ -354,8 +354,8 @@ class TemporalLstmDna(Dna):
             print("actual")
             print("------")
             print(actual)
-        actual = self.inverse_transform(self.series, actual, self.scaler, series_test_start_index)
-        return forecasts, actual
+        expected_list = self.inverse_transform(self.series, actual, self.scaler, series_test_start_index)
+        return forecasts, expected_list
         
     def __run(self, jresult, use_saved_model=False, model_name='TemporalLstmDna', 
               return_train_data=False, n_epochs=10, n_neurons=10, batch_size=1, info=None, test_data_percentage=0.2):
@@ -450,6 +450,10 @@ class TemporalLstmDna(Dna):
             for ts in self.index[0:test_start_index]:
                 train_time_list.append(str(ts))
             jresult['TrainTime'] = train_time_list
+        test_data_list = list()
+        for value in self.data_raw[test_start_index:]:
+            test_data_list.append(value)
+        jresult['TestData'] = test_data_list
         jresult['Expected'] = expected_list
         jresult['Predicted'] = predicted_list
         jresult['Time'] = predicted_time_list
@@ -990,7 +994,7 @@ class TemporalLstmDna(Dna):
         8  32.561068
         9  32.289195
 
-        Give batch_size=3, the observed data for the forecast performed on
+        Given batch_size=3, the observed data for the forecast performed on
         on the test data is [5] 31.645156. The start index (series_test_start_index)
         is determined by incrementing the length of train set by 1, i.e. len(train)+1.
         '''
