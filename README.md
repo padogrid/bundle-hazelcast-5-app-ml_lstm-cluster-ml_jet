@@ -486,6 +486,10 @@ This bundle includes an MQTT virtual cluster connector for briding MQTT and Haze
 To use the MQTT virtual cluster named `edge`, follow the steps below.
 
 
+### 0. Install Mosquitto
+
+First, install Mosquitto as described in the [Install/Building Mosquitto](https://github.com/padogrid/padogrid/wiki/Installing-Building-Mosquitto) section of the PadoGrid manual.
+            
 ### 1. Install and start MQTT virtual cluster
 
 ```bash
