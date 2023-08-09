@@ -252,6 +252,8 @@ Caused by: java.io.IOException: Python process died before completing initializa
 
 ### 1. Start Hazelcast cluster and Management Center
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 # Start Hazelcast cluster and MC. ml_jet has been preconfigured with PYTHONPATH set to 
 # the ml_lsmt app's Python source directory. See 'bin_sh/setenv.sh'.
@@ -264,6 +266,8 @@ show_cluster
 
 The `maxCount` in the `simulator-hazelcast.yaml` file is set to ingest 2600 entries to the `stocks` map. You can change it to another value as needed.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-hazelcast.yaml
@@ -272,6 +276,8 @@ cd_app simulator/bin_sh
 ### 3. Build LSTM model
 
 To run Python, you must have Python 3.10 installed along with the required modules showin in the [`requirements.txt`](apps/ml_lstm/src/main/python/requirements.txt) file. The Python package versions used to test this bundle is listed in the [`requirements-versions.txt`](apps/ml_lstm/src/main/python/requirements-versions.txt) file. In addition to the required modules, `PYTHONPATH` must include this bundle's Python source directory. It is automatically set when you ran the `build_app` script in the [Build Steps](#build-steps) section, but if you are running from a new terminal then you can set it as follows.
+
+![Terminal](images/terminal.png) Terminal 1, Terminal 2, Terminal 3
 
 ```bash
 cd_app ml_lstm
@@ -284,6 +290,8 @@ The `build_app` script that you executed in the [Preparing Environment](#prepari
 
 ❗ CAUTION: The following will overwrite the existing models.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 cd_app ml_lstm
 cp -r etc/prebuilt_models/* data/ml_results/
@@ -291,8 +299,11 @@ cp -r etc/prebuilt_models/* data/ml_results/
 
 🔘 To build models, run the `forecast_test_local` module with the option, `--generate`, which generates a model for the specified feature using the dataset in Hazelcast. It also validates the dataset and plots the entire set of observed data along with the predicted (forecasted) data. The following shows its usage.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 cd_app ml_lstm
+export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_test_local --help
 ```
 
@@ -330,9 +341,12 @@ options:
 
 Try the default feature using the included models.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 # Display the default feature: stock1-jitter
 cd_app ml_lstm
+export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_test_local
 ```
 
@@ -348,6 +362,8 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 ```
 
 To view all the features, see `etc/simulator-hazelcast.yaml`. The `equationNames` attribute lists the equation names which make up the attributes (features) of JSON objects that the simulator generates.
+
+![Terminal](images/terminal.png) Terminal 1
 
 ```bash
 cd_app simulator
@@ -377,6 +393,8 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 
 Submit  `ml-lstm-1.0.1.jar` that you created during the build steps. It contains `SimulatorForecastJob` (Java) that intakes streamed data to accumulate `time` by date interval and fit the resultant average value to the model to forecast the next data point. We could simply select the last value in the data interval, but if the data interval is too large then taking the last value may significantly skew the forecast results as it continously drifts away from the dataset that the model was originally created with. The accumulator also serves our demonstration purpose for showing a glimpse of how we can aggregate streamed data.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 # Make sure to first unset CLASSPATH and reset it by switching into ml_jet to prevent
 # ClassNotFoundException exceptions.
@@ -398,6 +416,8 @@ usage: SimulatorForecastJob
 ```
 
 Let's submit `SimulatorForecastJob` with the default feature, `stock1-jitter`.
+
+![Terminal](images/terminal.png) Terminal 1
 
 ```bash
 cd_app ml_lstm
@@ -428,6 +448,8 @@ digraph DAG {
 
 The `simulator-hazelcast-journal.yaml` file is identical to `simulator-hazelcast.yaml` except that it feeds data at a slower pace into the `journal` map. The `journal` map data updates are streamed into the Jet pipeline, which in turn invokes the Python code that generates forecasted values.
 
+![Terminal](images/terminal.png) Terminal 2
+
 ```bash
 cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-hazelcast-journal.yaml
@@ -439,7 +461,10 @@ cd_app simulator/bin_sh
 
 Display the usage.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash 
+export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_monitor --help
 ```
 
@@ -463,7 +488,10 @@ options:
 
 Plot the default feature, `stock1-jitter`.
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
+export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_monitor
 ```
 
@@ -494,6 +522,8 @@ First, install Mosquitto as described in the [Install/Building Mosquitto](https:
             
 ### 1. Install and start MQTT virtual cluster
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 # Create the default cluster, mymosquitto
 make_cluster -product mosquitto
@@ -504,6 +534,8 @@ start_cluster -cluster mymosquitto
 
 ### 2. Ingest intial data to Hazelcast cluster
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-hazelcast.yaml
@@ -511,21 +543,38 @@ cd_app simulator/bin_sh
 
 ### 3. Submit job
 
+![Terminal](images/terminal.png) Terminal 1
+
 ```bash
 cd_app ml_lstm
 hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
 ```
 
-### 4. Ingest real-time data to MQTT virtual cluster
+### 4. Start MQTT virtual cluster
+
+![Terminal](images/terminal.png) Terminal 2
+
+```bash
+cd_app ml_lstm
+vc_start -config etc/mqttv5-hazelcast.yaml
+```
+
+### 5. Ingest real-time data to MQTT virtual cluster
+
+![Terminal](images/terminal.png) Terminal 3
 
 ```bash
 cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-mqtt-journal.yaml
 ```
 
-### 5. Plot real-time forecasts
+### 6. Plot real-time forecasts
+
+![Terminal](images/terminal.png) Terminal 1
 
 ```bash
+cd_app ml_lstm
+export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter
 ```
 
