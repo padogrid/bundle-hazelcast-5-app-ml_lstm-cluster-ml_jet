@@ -583,8 +583,8 @@ python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter
 ## Teardown
 
 ```bash
-# Stop Hazelcast cluster and Management Center
-stop_cluster -all
+# Stop all in workspace: Hazelcast cluster, Management Center, Mosquitto
+stop_workspace -all
 ```
 
 ---
