@@ -412,7 +412,7 @@ class TemporalLstmDna(Dna):
         # Create model if not found
         if model_found == False:
             # fit (train) the model
-            print('Fitting (training) model... epochs=%d, neurons=%d' % (n_epochs, n_neurons))
+            print('Fitting (training) model... epochs=%d, neurons=%d, batch_size=%d' % (n_epochs, n_neurons, batch_size))
             start_time = time.time()
             # fit model
             self.model, self.rt_model = self.fit_lstm(self.data_train, n_lag, n_epochs, n_neurons, batch_size)
@@ -436,7 +436,6 @@ class TemporalLstmDna(Dna):
         # time_list, expected_list, predicted_list = self.forecast_test_dataset()
         print('   took: %f sec' % (time.time() - start_time))
 
-        #test_data_end_index = series_test_start_index + len(predicted_list) + 1
         test_start_index = series_test_start_index + 1
         test_data_end_index = test_start_index + len(predicted_list) + 2
         for ts in self.index[test_start_index:test_data_end_index]:
@@ -451,7 +450,7 @@ class TemporalLstmDna(Dna):
                 train_time_list.append(str(ts))
             jresult['TrainTime'] = train_time_list
         test_data_list = list()
-        for value in self.data_raw[test_start_index:]:
+        for value in self.data_raw[test_start_index:test_data_end_index]:
             test_data_list.append(value)
         jresult['TestData'] = test_data_list
         jresult['Expected'] = expected_list
@@ -466,7 +465,7 @@ class TemporalLstmDna(Dna):
         jresult['Rmse'] = rmse
         jresult['NormalizedRmse'] = rmse / spread
         
-        # Store last two (3) values
+        # Store last three (3) values
         last_times = predicted_time_list[-3:]
         last_times_str_list = list()
         for i in range(len(last_times)):

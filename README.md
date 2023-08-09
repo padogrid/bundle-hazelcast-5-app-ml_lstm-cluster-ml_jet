@@ -278,7 +278,9 @@ cd_app ml_lstm
 export PYTHONPATH=`pwd`/src/main/python
 ```
 
-🔘 Building a model takes a long time. Depending on the data volume along with the `epochs` and `neurons` values, it can take a few seconds to over an hour. This bundle includes models that have been prebuilt with `epochs=10` and `neurons=10`. The `build_app` script that you executed in the [Preparing Environment](#preparing-environment) section has already placed the models in the `data/ml_results` directory where the models are generated. This means you can start forecasting data without building models. You can manually copy the models as follows.
+🔘 Building a model takes a long time. Depending on the data volume along with the `epochs`, `neurons`, and `batch_size` values, it can take a few seconds to over an hour. This bundle includes models that have been prebuilt with `epochs=100`, `neurons=1`, and `batch_size=1`. Note that since the simulator adds randomness to jitters, tunning these parameters may not necessarily yield better outcomes, but may significantly reduce the execution time. You are encourged to try different values.
+
+The `build_app` script that you executed in the [Preparing Environment](#preparing-environment) section has already placed the prebuilt models in the `data/ml_results` directory where the models are generated. This means you can start forecasting data without building models. You can manually copy the models as follows.
 
 ❗ CAUTION: The following will overwrite the existing models.
 
@@ -314,10 +316,10 @@ options:
                         model. (default: False)
   -e EPOCHS, --epochs EPOCHS
                         Number of model fit iterations (number of epochs to train the model). This option has no
-                        effect for the existing model. (default: 10)
+                        effect for the existing model. (default: 100)
   -n NEURONS, --neurons NEURONS
                         Number of neurons in the hidden layer. This option has no effect for the existing model.
-                        (default: 10)
+                        (default: 1)
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                         Batch size. If the existing model is used, then the specified batch size is overwritten
                         with the existing model's batch size. (default: 1)
