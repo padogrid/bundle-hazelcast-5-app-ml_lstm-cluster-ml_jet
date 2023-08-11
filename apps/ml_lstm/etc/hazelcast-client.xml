@@ -24,14 +24,7 @@
 	<connection-strategy async-start="false"
 		reconnect-mode="ON">
 		<connection-retry>
-			<initial-backoff-millis>1000</initial-backoff-millis>
-			<max-backoff-millis>50000</max-backoff-millis>
-			<!-- With multiplier 1, initiali-backoff is used throughout retries -->
-			<multiplier>1</multiplier>
-			<!-- Set cluster-connect-timeout-millis to a large value so that it retries 
-				forever -->
-			<cluster-connect-timeout-millis>1000000000</cluster-connect-timeout-millis>
-			<jitter>0.2</jitter>
+			<cluster-connect-timeout-millis>5000</cluster-connect-timeout-millis>
 		</connection-retry>
 	</connection-strategy>
 
