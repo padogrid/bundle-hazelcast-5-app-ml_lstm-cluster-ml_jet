@@ -174,8 +174,8 @@ def transform_list(input_list):
             ret_list = input_list
     
     except Exception as e:
-        logger.error("Exception occurred executing simulator_forecast.transform_list [" + str(input_list) + "]")
-        logger.error(repr(e))
+        logger.error("Exception occurred executing simulator_forecast.transform_list [%s]", str(input_list))
+        logger.exception("Exception: [%s]", repr(e))
         raise
     
     t2 = datetime.datetime.now()
