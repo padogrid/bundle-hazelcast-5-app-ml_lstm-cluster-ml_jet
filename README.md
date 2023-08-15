@@ -45,7 +45,8 @@ apps
     │   ├── mqttv5-hazelcast.yaml
     │   ├── prebuilt_models/
     │   ├── simulator-hazelcast-journal.yaml
-    │   └── simulator-hazelcast.yaml
+    │   ├── simulator-hazelcast.yaml
+    │   └── simulator-mqtt-journal.yaml
     ├── pom.xml
     └── src
         └── main
