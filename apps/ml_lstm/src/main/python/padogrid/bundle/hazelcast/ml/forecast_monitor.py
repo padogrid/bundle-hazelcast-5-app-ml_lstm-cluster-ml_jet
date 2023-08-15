@@ -113,7 +113,7 @@ parser = argparse.ArgumentParser(description="Forecast monitor in real time",
 parser.add_argument("-?", action="store_true", help="show this help message and exit")
 parser.add_argument("-c", "--cluster", default="ml_jet", help="Hazelcast cluster name")
 parser.add_argument("-m", "--map", default="forecast", help="Name of the map that streams forecasted values")
-parser.add_argument("-f", "--feature", default="stock1-jitter", help="Feature name. The feature name is used for the chart title only. It can be any name that identifies the data being displayed.")
+parser.add_argument("-f", "--feature", default="stock1-jitter", help="Name of the feature to monitor. This feature is extracted from the forecast map in real time.");
 
 args = vars(parser.parse_args())
 
