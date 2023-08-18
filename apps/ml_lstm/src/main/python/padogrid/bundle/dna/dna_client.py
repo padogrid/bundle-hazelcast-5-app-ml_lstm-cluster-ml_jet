@@ -21,7 +21,7 @@ Created on May 20, 2021
 '''
 
 from datetime import datetime
-import os
+import getpass
 
 class Dna():
     '''
@@ -39,7 +39,7 @@ class Dna():
     def __init__(self, username=None):
         self.username = username
         if self.username == None:
-            self.username = os.getlogin()
+            self.username = getpass.getuser()
         if self.username == None:
             self.username = 'dna'
     

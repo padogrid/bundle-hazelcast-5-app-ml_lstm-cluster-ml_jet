@@ -601,6 +601,8 @@ Caused by: java.lang.ClassNotFoundException: com.hazelcast.jet.python.PythonServ
 	at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
 ```
 
+#### Solution
+
 If you see `ClassNotFoundException` then unset `CLASSPATH` and reset it by switching into the `ml_jet` cluster as follows.
 
 ```bash
@@ -610,7 +612,53 @@ cd_app ml_lstm
 hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
 ```
 
-### 2. How do I execute SQL in Magement Center?
+### 2. The charts fail to display with the following error message.
+
+```console
+...
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+
+Available platform plugins are: eglfs, minimal, minimalegl, offscreen, vnc, webgl, xcb.
+```
+
+#### Solution
+
+Forcifully remove all `qt` modules. This error occurs when conda enivironment is linking to its own `qt` binaries. Use the `--force` option to remove all `qt` modules without removeing their dependencies.
+
+```bash
+conda remove --force $(conda list |grep qt | awk '{print $1}')
+```
+
+### 3. I'm getting the following exception when I submit jobs.
+
+```console
+...
+Caused by: java.lang.ClassNotFoundException: com.hazelcast.jet.python.PythonServiceConfig
+        at java.base/java.net.URLClassLoader.findClass(URLClassLoader.java:476)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:594)
+        at java.base/java.net.FactoryURLClassLoader.loadClass(URLClassLoader.java:904)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+...
+```
+
+#### Solution
+
+This occurs when you have a *slim* version of Hazelcast. Install a full version by running `install_padogrid` as follows.
+
+```bash
+install_padogrid -product hazelcast-oss
+update_products -product hazelcast-oss
+```
+
+Make sure to restart the Hazelcast cluster after installation.
+
+```bash
+kill_cluster -all
+start_cluster -all
+```
+
+### 4. How do I execute SQL in Magement Center?
 
 Before you can execute SQL statements to query JSON objects from Management Center, you must first creat a mapping map. There are two types of mapping map for JSON: `json-flat` and `json`. Execute one of them followed by your query statmement.
 
@@ -639,7 +687,7 @@ OPTIONS (
 )
 ```
 
-### 3. How do I setup VS Code with PadoGrid?
+### 5. How do I setup VS Code with PadoGrid?
 
 1. Create a Python environment with all the required packages installed. An example conda environment is described in the [Python Installation](#python-installation) section. From VS Code, select the Python environment by searching **Python: Select Interpreter** (*Shift-Commond-P*).
 
