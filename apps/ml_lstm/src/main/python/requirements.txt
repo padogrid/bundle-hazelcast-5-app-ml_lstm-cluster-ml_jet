@@ -10,3 +10,4 @@ pydevd
 debugpy
 maya
 hazelcast-python-client
+pyqt5
