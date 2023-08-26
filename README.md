@@ -62,7 +62,7 @@ clusters
 
 ## Python Installation
 
-The following is an Anaconda example. This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast.
+The following is an Anaconda example. This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast Jet.
 
 ```bash
 conda create --name tensorflow310 python=3.10
@@ -504,8 +504,16 @@ python -m padogrid.bundle.hazelcast.ml.forecast_monitor
 
 Use `top` to monitor `java` and `python` processes as follows.
 
+macOS:
+
 ```bash
 top -pid $(pgrep -d " " "java|python" |sed "s/ / -pid /g")
+```
+
+Linux:
+
+```bash
+top -p $(pgrep -d " " "java|python" |sed "s/ / -p /g")
 ```
 
 ---
@@ -518,6 +526,8 @@ To use the MQTT virtual cluster named `edge`, follow the steps below.
 
 
 ### 0. Install Mosquitto
+
+✏️  If you are using a PadoGrid container, then Mosquitto has already been installed and you can skip this step.
 
 First, install Mosquitto as described in the [Install/Building Mosquitto](https://github.com/padogrid/padogrid/wiki/Installing-Building-Mosquitto) section of the PadoGrid manual.
             
@@ -533,11 +543,20 @@ make_cluster -product mosquitto
 start_cluster -cluster mymosquitto
 ```
 
-### 2. Ingest intial data to Hazelcast cluster
+❗ Do not switch into `mymosquitto`.  All of the subsequent Hazelcast commands must be executed in the Hazelcast cluster context, and not the Mosquitto cluster. If you are unsure, then execute the following switch command to set the Hazelcast cluster context.
+
+```bash
+# Switch into the Hazelcast cluster
+switch_cluster ml_jet
+```
+
+### 2. Ingest initial data to Hazelcast cluster
 
 ![Terminal](images/terminal.png) Terminal 1
 
+
 ```bash
+switch_cluster ml_jet
 cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-hazelcast.yaml
 ```
@@ -769,10 +788,12 @@ PYTHONPATH=$PADOGRID_WORKSPACES_HOME/bundle-hazelcast-5-app-ml_lstm-cluster-ml_j
 1. [Beginner’s Guide to RNN & LSTMs](https://medium.com/@humble_bee/rnn-recurrent-neural-networks-lstm-842ba7205bbf) - Describes RNN and LSTM in simple language.
 1. [Understanding LSTMs](https://colah.github.io/posts/2015-08-Understanding-LSTMs/) - Provides a high level overview of LSTM.
 1. [What and why behind fit_transform() and transform() in scikit-learn!](https://towardsdatascience.com/what-and-why-behind-fit-transform-vs-transform-in-scikit-learn-78f915cf96fe) - Explains why we use `fit_transform()` on training data but `transform()` on the test data.
-1. [FOREX_eurusd-minute-High, OpenML](https://www.openml.org/d/41845) - Historical price data of the FOREX EUR/USD from Dukascopy (2018-01-01 to 2018-12-13). Each row represents one candlesitck of one minute. This is for a future reference. Its dataset cannot be used for this bundle at this time.
-1. *Installing and Running VS Code in PadoGrid, PadoGrid Manual*, <https://github.com/padogrid/padogrid/wiki/VS-Code>
-1. *Data Feed Simulator*, PadoGrid Bundles, <https://github.com/padogrid/bundle-none-app-simulator>
-1. *Hazelcast Job: Executing Remote Python Code*, PadoGrid Bundles, <https://github.com/padogrid/bundle-hazelcast-5-tutorial-app-jet_python> 
+1. [FOREX_eurusd-minute-High, OpenML](https://www.openml.org/d/41845) - Historical price data of the FOREX EUR/USD from Dukascopy (2018-01-01 to 2018-12-13). Each row represents one candlesitck of one minute. This is for a future reference. Its dataset cannot be used with this bundle at this time.
+1. [Data Feed Simulator](https://github.com/padogrid/bundle-none-app-simulator), PadoGrid Bundles.
+1. [Installing and Running VS Code in PadoGrid](https://github.com/padogrid/padogrid/wiki/VS-Code), PadoGrid Manual.
+1. [Hazelcast Job: Executing Remote Python Code](https://github.com/padogrid/bundle-hazelcast-5-tutorial-app-jet_python), PadoGrid Bundles.
+1. [Running Bundles in Container](https://github.com/padogrid/padogrid/wiki/Running-Bundles-in-Container), PadoGrid Manual.
+1. [How do I install Miniconda3 in PadoGrid environment?](https://github.com/padogrid/padogrid/wiki/faq-How-do-I-install-Miniconda3-in-PadoGrid-environment), PadoGrid FAQ.
 
 ---
 
