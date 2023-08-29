@@ -55,6 +55,10 @@ plugins:
       - key: hazelcast.client.config
         value: ${env:PADOGRID_WORKSPACE}/apps/ml_lstm/etc/hazelcast-client.xml
 
+    subscriptions:
+      - topicFilters: [journal/#]
+        qos: 0
+
 # Tag name that describes this JVM.
 # Default: cluster-tag
 tag: edge

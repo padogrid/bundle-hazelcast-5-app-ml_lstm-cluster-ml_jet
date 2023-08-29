@@ -121,17 +121,7 @@ public class HazelcastJsonConnector implements IHaMqttConnectorSubscriber {
 
     @Override
     public void start(HaMqttClient haclient) {
-        try {
-            String[] split = topicFilters.split(",");
-            for (String tf : split) {
-                haclient.subscribe(tf.trim(), 0);
-            }
-            logger.info(String.format("Started [topicFilters=%s].", topicFilters));
-        } catch (MqttException e) {
-            stop();
-            logger.error(String.format("Error occurred while subscribing to MQTT virtual cluster. %s discarded.",
-                    HazelcastJsonConnector.class.getSimpleName()), e);
-        }
+        logger.info(String.format("Started [cluster=%s]", haclient.getClusterName()));
     }
 
     @Override

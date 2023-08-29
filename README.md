@@ -31,6 +31,7 @@ LSTM was first introduced in 1997 by [Hochreiter & Schmidhuber](http://www.bioin
 - Python 3.10 (Tested with Anaconda on macOS)
 - Maven 3.x+
 - Hazelcast 5.x (Full distribution of OSS or Enterprise. Slim distributions do not include Python binaries.)
+- PadoGrid 0.9.28+ (Release 1.0.2+ requires PadoGrid 0.9.28+.)
 
 ## Bundle Contents
 
