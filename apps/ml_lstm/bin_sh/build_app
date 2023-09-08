@@ -37,6 +37,14 @@ pushd $APP_DIR > /dev/null
 mvn clean install
 popd > /dev/null
 
+pushd $APP_DIR > /dev/null
+# Update MQTT config files that have the deprecated attributes
+# v0.9.29
+if [ $PADOGRID_MAJOR_VERSION_NUMBER -eq 0 ] && [ $PADOGRID_MINOR_VERSION_NUMBER -eq 9 ] &&  [ $PADOGRID_UPDATE_VERSION_NUMBER -ge 29 ]; then
+   sed -i${__SED_BACKUP} -e 's|pluginName:.*$|pluginNames: [hazelcast]|' etc/mqttv5-hazelcast.yaml
+fi
+popd > /dev/null
+
 # Place the prebuilt models into the data/ml_results dir
 echo "+ Copying prebuilt models into data/ml_results..."
 if [ ! -d "$APP_DIR/data/ml_results" ]; then

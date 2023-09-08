@@ -76,7 +76,7 @@ clusters:
     publisherType: ROUND_ROBIN
     
     # Hazelcast connector. Enable or disable in the 'plugins' element.
-    pluginName: hazelcast
+    pluginNames: [hazelcast]
 
     connections:
       - connection:
