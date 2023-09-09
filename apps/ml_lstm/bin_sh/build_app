@@ -63,7 +63,6 @@ if [ ! -d "$APP_DIR/simulator" ]; then
    echo "+ Copying/updating simulator configuration files..."
    cp "$APP_DIR/etc/simulator"* "$APPS_DIR/simulator/etc/"
    sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
-   sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
 
    echo "+ Building simulator binaries..."
    pushd $APPS_DIR/simulator/bin_sh > /dev/null
