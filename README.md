@@ -27,8 +27,8 @@ LSTM was first introduced in 1997 by [Hochreiter & Schmidhuber](http://www.bioin
 
 ## Required Software
 
-- JDK 11+ (Required by simulator)
-- Python 3.10 (Tested with Anaconda on macOS)
+- JDK 11+ (Required by simulator and Hazelcast Management Center)
+- Python 3.10 (Tested with Anaconda on macOS and Ubuntu)
 - Maven 3.x+
 - Hazelcast 5.x (Full distribution of OSS or Enterprise. Slim distributions do not include Python binaries.)
 - PadoGrid 0.9.28+ (Release 1.0.2+ requires PadoGrid 0.9.28+.)
@@ -116,7 +116,7 @@ This bundle uses the LSTM tutorial example provided by [1] with several key addi
   - The list argument is constructed by Jet by aggregating results from the local parallelization. If the string values contain commas, the list it creates contains mangled values that are unparsable. This prevents the use of JSON string values.
   - By design, the `transform_list()` function must always return a list with the same number of elements as the input list. Otherwise, Jet throws an exception and the results will be lost. At that point of time, the DAG position will reset to the top and continue from there.
 
-- This bundle creates two (2) jar files: `ml-lstm-1.0.1.jar` and `ml-lstm-1.0.1-data.jar`. `ml-lstm-1.0.1.jar` contains all the classes including the job and data classes to be submitted to Jet by the user. `ml-lstm-1.0.1-data.jar` contains only data classes and is automatically deployed to the workspace by the build step in the [Preparing Environment](#preparing-environment) section..
+- This bundle creates two (2) jar files: `ml-lstm-1.0.3.jar` and `ml-lstm-1.0.3-data.jar`. `ml-lstm-1.0.3.jar` contains all the classes including the job and data classes to be submitted to Jet by the user. `ml-lstm-1.0.3-data.jar` contains only data classes and is automatically deployed to the workspace by the build step in the [Preparing Environment](#preparing-environment) section..
 
 **Binaries:**
 
@@ -125,10 +125,10 @@ This bundle uses the LSTM tutorial example provided by [1] with several key addi
 ├── apps
 │   └── ml_lstm
 │       └── target
-│           └── ml-lstm-1.0.1.jar
+│           └── ml-lstm-1.0.3.jar
 ├── lib
 └── plugins
-    └── ml-lstm-1.0.1-data.jar
+    └── ml-lstm-1.0.3-data.jar
 ```
 
 **Source Code:**
@@ -393,7 +393,7 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 
 ### 4. Submit job
 
-Submit  `ml-lstm-1.0.1.jar` that you created during the build steps. It contains `SimulatorForecastJob` (Java) that intakes streamed data to accumulate `time` by date interval and fit the resultant average value to the model to forecast the next data point. We could simply select the last value in the data interval, but if the data interval is too large then taking the last value may significantly skew the forecast results as it continously drifts away from the dataset that the model was originally created with. The accumulator also serves our demonstration purpose for showing a glimpse of how we can aggregate streamed data.
+Submit  `ml-lstm-1.0.3.jar` that you created during the build steps. It contains `SimulatorForecastJob` (Java) that intakes streamed data to accumulate `time` by date interval and fit the resultant average value to the model to forecast the next data point. We could simply select the last value in the data interval, but if the data interval is too large then taking the last value may significantly skew the forecast results as it continously drifts away from the dataset that the model was originally created with. The accumulator also serves our demonstration purpose for showing a glimpse of how we can aggregate streamed data.
 
 ![Terminal](images/terminal.png) Terminal 1
 
@@ -403,7 +403,7 @@ Submit  `ml-lstm-1.0.1.jar` that you created during the build steps. It contains
 export CLASSPATH=
 switch_cluster ml_jet
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar --help
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar --help
 ```
 
 Output:
@@ -423,7 +423,7 @@ Let's submit `SimulatorForecastJob` with the default feature, `stock1-jitter`.
 
 ```bash
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar
 ```
 
 The submitted job forms the following DAG.
@@ -568,7 +568,7 @@ cd_app simulator/bin_sh
 
 ```bash
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar
 ```
 
 ### 4. Start MQTT virtual cluster
@@ -629,7 +629,7 @@ If you see `ClassNotFoundException` then unset `CLASSPATH` and reset it by switc
 export CLASSPATH=
 switch_cluster ml_jet
 cd_app ml_lstm
-hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.1.jar
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar
 ```
 
 ### 2. The charts fail to display with the following error message.

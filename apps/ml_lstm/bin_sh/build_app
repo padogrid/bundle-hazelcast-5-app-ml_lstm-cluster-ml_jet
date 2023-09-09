@@ -8,10 +8,13 @@ if [ "$HELP" == "true" ]; then
 cat <<EOF
 
 NAME
-   $EXECUTABLE - Build job jar
+   $EXECUTABLE - Build the LSTM app environment.
 
 SYNOPSIS
    $EXECUTABLE [-?]
+
+DESCRIPTION
+   Builds the LSTM app environment.
 
 DEFAULT
    $EXECUTABLE
