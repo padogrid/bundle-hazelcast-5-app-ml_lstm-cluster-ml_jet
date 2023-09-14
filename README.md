@@ -27,7 +27,9 @@ LSTM was first introduced in 1997 by [Hochreiter & Schmidhuber](http://www.bioin
 
 ## Google Colab
 
-This bundle runs on Colab: [![Colab Padogrid](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/padogrid/bundle-hazelcast-5-app-ml_lstm-cluster-ml_je/blob/master/apps/ml_lstm/src/main/python/forecast_test_colab.ipynb)
+This bundle runs on Colab.
+
+- Forecast Test: [![Colab Padogrid](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/padogrid/bundle-hazelcast-5-app-ml_lstm-cluster-ml_jet/blob/master/apps/ml_lstm/src/main/python/forecast_test_colab.ipynb)
 
 ## Required Software
 
