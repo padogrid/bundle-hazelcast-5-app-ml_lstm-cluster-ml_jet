@@ -107,6 +107,25 @@ def plot_forecasts(train_time_list, train_data_list, time_list, test_data_list, 
 # -------------------------------
 # User Inputs
 # -------------------------------
+
+# Try comparing jitter vs no-jitter. With no-jitter, the simulator generates
+# unaltered equation values which should result in high accuracy of predicted
+# values.
+
+# ------
+# stock1 
+# ------
+#feature="stock1-jitter"
+# R^2=0.92
+#feature="stock1-jitter-large"
+#feature="stock1-no-jitter"
+
+# ------
+# stock2
+# ------
+#feature="stock2-jitter"
+#feature="stock2-no-jitter"
+
 parser = argparse.ArgumentParser(description="Plots observed and forecasted data for the specified Hazelcast map. "
     + "It generates an LSTM model for the specified map that contains observed data if the model is not already generated. "
     + "To force generating a model, specify the '--generate' option. It will overwrite the previously generated model.",
@@ -180,27 +199,6 @@ dna = HazelcastLstmDna(feature, client, working_dir=working_dir, verbose=is_verb
 # --------------------------------------------------------------------------
 # Execute locally
 # --------------------------------------------------------------------------
-
-# First, get temporal_list
-# --------------------------------------------------------------------------
-
-# Try comparing jitter vs no-jitter. With no-jitter, the simulator generates
-# unaltered equation values which should result in high accuracy of predicted
-# values.
-
-# ------
-# stock1 
-# ------
-#feature="stock1-jitter"
-# R^2=0.92
-#feature="stock1-jitter-large"
-#feature="stock1-no-jitter"
-
-# ------
-# stock2
-# ------
-#feature="stock2-jitter"
-#feature="stock2-no-jitter"
 
 model_name="model_" + feature
 
