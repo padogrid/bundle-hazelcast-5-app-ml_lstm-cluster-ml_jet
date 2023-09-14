@@ -25,6 +25,10 @@ LSTM was first introduced in 1997 by [Hochreiter & Schmidhuber](http://www.bioin
 
 ![ml_lstm Data Flow Diagram ](images/ml-lstm-dna.drawio.png)
 
+## Google Colab
+
+This bundle runs on Colab: [![Colab Padogrid](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/padogrid/bundle-hazelcast-5-app-ml_lstm-cluster-ml_je/blob/master/apps/ml_lstm/src/main/python/forecast_test_colab.ipynb)
+
 ## Required Software
 
 - JDK 11+ (Required by simulator and Hazelcast Management Center)
