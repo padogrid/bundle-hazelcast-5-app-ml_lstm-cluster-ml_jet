@@ -256,7 +256,7 @@ is_debug_enabled = True
 Caused by: java.io.IOException: Python process died before completing initialization
 ```
 
-**You must start the cluster outside of Jupyter Lab or VS Code terminals to avoid the above exception. This seems to be a limitation in Jet.**
+**You must start the cluster outside of Jupyter Lab or VS Code terminals to avoid the above exception. This seems to be a limitation of Jet.**
 
 ### 1. Start Hazelcast cluster and Management Center
 
@@ -371,6 +371,10 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 
 To view all the features, see `etc/simulator-hazelcast.yaml`. The `equationNames` attribute lists the equation names which make up the attributes (features) of JSON objects that the simulator generates.
 
+The following Jupyter notebook is equivalent to `padogrid.bundle.hazelcast.ml.forecast_test_local`.
+
+- [forecast_test_local.ipynb](apps/ml_lstm/src/main/python/forecast_test_local.ipynb)
+
 ![Terminal](images/terminal.png) Terminal 1
 
 ```bash
@@ -397,7 +401,7 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 
 ![Test Data Forecast Screenshot](images/stock1-jitter-forecast_test_local.png)
 
-### 4. Submit job
+### 4. Submit jobs
 
 Submit  `ml-lstm-1.0.3.jar` that you created during the build steps. It contains `SimulatorForecastJob` (Java) that intakes streamed data to accumulate `time` by date interval and fit the resultant average value to the model to forecast the next data point. We could simply select the last value in the data interval, but if the data interval is too large then taking the last value may significantly skew the forecast results as it continously drifts away from the dataset that the model was originally created with. The accumulator also serves our demonstration purpose for showing a glimpse of how we can aggregate streamed data.
 
@@ -493,6 +497,10 @@ options:
                         Feature name. The feature name is used for the chart title only. It can be any name that
                         identifies the data being displayed. (default: stock1-jitter)
 ```
+
+The following Jupyter notebook is equivalent to `padogrid.bundle.hazelcast.ml.forecast_monitor`.
+
+- [forecast_monitor.ipynb](apps/ml_lstm/src/main/python/forecast_monitor.ipynb)
 
 Plot the default feature, `stock1-jitter`.
 
