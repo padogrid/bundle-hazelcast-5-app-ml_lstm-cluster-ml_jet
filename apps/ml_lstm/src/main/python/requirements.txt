@@ -1,5 +1,5 @@
 numpy
-tensorflow
+tensorflow==2.0.3
 keras
 pandas
 scikit-learn
@@ -11,3 +11,5 @@ debugpy
 maya
 hazelcast-python-client
 pyqt5
+holoviews
+jupyter-bokeh
