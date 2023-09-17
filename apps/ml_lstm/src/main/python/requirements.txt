@@ -1,5 +1,5 @@
 numpy
-tensorflow==2.0.3
+tensorflow
 keras
 pandas
 scikit-learn
