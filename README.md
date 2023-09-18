@@ -78,6 +78,12 @@ cd_app ml_lstm
 pip install -r src/main/python/requirements.txt
 ```
 
+❗ For non-Anaconda environments, on Debian/Ubuntu systems, you need to install the `python3-venv` package due to the Hazelcast Jet's use of the virtual environment.
+
+```bash
+sudo apt install python3.10-venv
+```
+
 [Download and Install Anaconda](https://www.anaconda.com/products/individual)
 
 ---

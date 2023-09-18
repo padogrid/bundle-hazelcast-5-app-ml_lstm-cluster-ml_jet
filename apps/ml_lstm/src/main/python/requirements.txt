@@ -10,6 +10,5 @@ pydevd
 debugpy
 maya
 hazelcast-python-client
-pyqt5
 holoviews
 jupyter-bokeh
