@@ -28,7 +28,7 @@ popd > /dev/null
 if [ "$(which jq)" == "" ]; then
    return
 fi
-if [ "$(which open_vscode)" == "" ]; then
+if [ "$(which code)" == "" ]; then
    return
 fi
 WORKSPACE_CODE_WORKSPACE_FILE_NAME="workspace.code-workspace"

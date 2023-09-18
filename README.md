@@ -69,7 +69,9 @@ clusters
 
 ## Python Installation
 
-The following is an Anaconda example. This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast Jet.
+This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast Jet.
+
+The following is an Anaconda example. Note that Anaconda is NOT required to run this bundle.
 
 ```bash
 conda create --name tensorflow310 python=3.10
@@ -83,6 +85,8 @@ pip install -r src/main/python/requirements.txt
 ```bash
 sudo apt install python3.10-venv
 ```
+
+❗ If you will be using the accompanied Jupyter notebooks in JupyterLab then you must **restart JupyterLab after you have installed `requrements.txt`**. This is because [HoloViews](https://holoviews.org/index.html) used by the notebooks requires Jupyter integration.
 
 [Download and Install Anaconda](https://www.anaconda.com/products/individual)
 
