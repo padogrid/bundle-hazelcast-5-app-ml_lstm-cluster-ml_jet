@@ -71,7 +71,7 @@ clusters
 
 This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast Jet.
 
-The following is an Anaconda example. Note that Anaconda is NOT required to run this bundle.
+The following is an Anaconda example. *Note that Anaconda is NOT required to run this bundle.*
 
 ```bash
 conda create --name tensorflow310 python=3.10
@@ -80,13 +80,17 @@ cd_app ml_lstm
 pip install -r src/main/python/requirements.txt
 ```
 
-❗ For non-Anaconda environments, on Debian/Ubuntu systems, you need to install the `python3-venv` package due to the Hazelcast Jet's use of the virtual environment.
+❗ For non-Anaconda environments on Debian/Ubuntu systems, you need to install the `python3-venv` package due to the Hazelcast Jet's use of a virtual environment.
 
 ```bash
 sudo apt install python3.10-venv
 ```
 
-❗ If you will be using the accompanied Jupyter notebooks in JupyterLab then you must **restart JupyterLab after you have installed `requrements.txt`**. This is because [HoloViews](https://holoviews.org/index.html) used by the notebooks requires Jupyter integration.
+❗ If you will be using the accompanied Jupyter notebooks in JupyterLab then you must **restart JupyterLab after you have installed `requrements.txt`**. This is because [HoloViews](https://holoviews.org/index.html) used by the notebooks requires Jupyter integration. If you are running this bundle in a PadoGrid container, then you can restart Jupyter Lab by stopping it as follows. The container will automatically restart JupyterLab if it is not running. Note that you may need to readjust the JupyerLab windows after a restart.
+
+```bash
+stop_jupyter
+```
 
 [Download and Install Anaconda](https://www.anaconda.com/products/individual)
 
@@ -357,6 +361,14 @@ options:
   -v, --verbose         Print interim results. (default: False)
 ```
 
+---
+
+The following Jupyter notebook is equivalent to `padogrid.bundle.hazelcast.ml.forecast_test_local`.
+
+#### ![Jupyter](images/jupyter_app_icon_161280.png) Notebook: [forecast_test_local.ipynb](apps/ml_lstm/src/main/python/forecast_test_local.ipynb)
+
+---
+
 Try the default feature using the included models.
 
 ![Terminal](images/terminal.png) Terminal 1
@@ -380,10 +392,6 @@ python -m padogrid.bundle.hazelcast.ml.forecast_test_local -f stock1-jitter-larg
 ```
 
 To view all the features, see `etc/simulator-hazelcast.yaml`. The `equationNames` attribute lists the equation names which make up the attributes (features) of JSON objects that the simulator generates.
-
-The following Jupyter notebook is equivalent to `padogrid.bundle.hazelcast.ml.forecast_test_local`.
-
-- [forecast_test_local.ipynb](apps/ml_lstm/src/main/python/forecast_test_local.ipynb)
 
 ![Terminal](images/terminal.png) Terminal 1
 
@@ -508,9 +516,13 @@ options:
                         identifies the data being displayed. (default: stock1-jitter)
 ```
 
+---
+
 The following Jupyter notebook is equivalent to `padogrid.bundle.hazelcast.ml.forecast_monitor`.
 
-- [forecast_monitor.ipynb](apps/ml_lstm/src/main/python/forecast_monitor.ipynb)
+#### ![Jupyter](images/jupyter_app_icon_161280.png) Notebook: [forecast_monitor.ipynb](apps/ml_lstm/src/main/python/forecast_monitor.ipynb)
+
+---
 
 Plot the default feature, `stock1-jitter`.
 

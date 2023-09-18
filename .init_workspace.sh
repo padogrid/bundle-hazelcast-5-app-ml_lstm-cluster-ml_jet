@@ -9,10 +9,20 @@
 # The first argument is always the workspace name in which the bundle is installed.
 #
 
-# This script is executed only if 'jq' and 'open_vscode' executables are in the path.
-
 WORKSPACE_NAME="$1"
 WORKSPACE_PATH="$PADOGRID_WORKSPACES_HOME/$WORKSPACE_NAME"
+
+if [ "$WORKSPACE_NAME" == "" ]; then
+   echo >&2 "ERROR: The first argument must be a valid workspace name. Command aborted."
+   exit 1
+fi
+if [ ! -d "$WORKSPACE_PATH" ]; then
+   echo >&2 "ERROR: Specified workspace does not exist [$WORKSPACE_NAME]. Command aborted."
+   exit 2
+fi
+
+# Switch workspace. This is required in order to build the bundle environment.
+switch_workspace $WORKSPACE_NAME
 
 #
 # 1. Build the bundle
@@ -22,7 +32,7 @@ pushd $WORKSPACE_PATH/apps/ml_lstm/bin_sh > /dev/null
 popd > /dev/null
 
 #
-# 2. Create workspace.code-workspace only if the 'jq' and 'open_vscode' executables are available.
+# 2. Create workspace.code-workspace only if the 'jq' and 'code' executables are available.
 #    Add PYTHONPATH to workspace.code-workspace.
 #
 if [ "$(which jq)" == "" ]; then
