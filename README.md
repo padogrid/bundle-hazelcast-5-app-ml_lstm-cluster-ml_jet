@@ -2,6 +2,9 @@
 
 ---
 
+<!-- Platforms -->
+[![Host OS](https://github.com/padogrid/padogrid/wiki/images/padogrid-host-os.drawio.svg)](https://github.com/padogrid/padogrid/wiki/Platform-Host-OS) [![VM](https://github.com/padogrid/padogrid/wiki/images/padogrid-vm.drawio.svg)](https://github.com/padogrid/padogrid/wiki/Platform-VM) [![Docker](https://github.com/padogrid/padogrid/wiki/images/padogrid-docker.drawio.svg)](https://github.com/padogrid/padogrid/wiki/Platform-Docker) [![Kubernetes](https://github.com/padogrid/padogrid/wiki/images/padogrid-kubernetes.drawio.svg)](https://github.com/padogrid/padogrid/wiki/Platform-Kubernetes) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/padogrid/bundle-hazelcast-5-app-ml_lstm-cluster-ml_jet/blob/master/apps/ml_lstm/src/main/python/forecast_test_colab.ipynb) 
+
 # Neural Network: LSTM RNN
 
 This bundle demonstrates forecasting future events in real time using LSTM RNN (Long Short-Term Memory Recurrent Neural Network) via Keras backed by TensorFlow. It constructs a Hazelcast Jet pipeline to apply LSTM RNN models on streamed data.
@@ -23,7 +26,7 @@ install_bundle -init -checkout bundle-hazelcast-5-app-ml_lstm-cluster-ml_jet
 
 LSTM was first introduced in 1997 by [Hochreiter & Schmidhuber](http://www.bioinf.jku.at/publications/older/2604.pdf). It is designed to avoid the long-term dependency problem in RNN by remembering information for long periods of time. It is documented by many that LSTM is being successfully applied to a wide variety of real-world use cases such as text generation, handwriting recognition/generation, music generation, languate translation, image captioning, and forecasting. A quick search on the Internet shows a wealth of articles describing how LSTM works along with Python and R tutorials [1,2]. However, they fall short on describing how it can be applied to real time data. This bundle fills that void by bringing LSTM in the data grid using Hazelcast Jet to perform stream processing and forecast data in real time.
 
-![ml_lstm Data Flow Diagram ](images/ml-lstm-dna.drawio.png)
+![ml_lstm Data Flow Diagram](images/ml-lstm-dna.drawio.png)
 
 ## Google Colab
 
