@@ -309,9 +309,9 @@ cd_app ml_lstm
 export PYTHONPATH=`pwd`/src/main/python
 ```
 
-🔘 Building a model takes a long time. Depending on the data volume along with the `epochs`, `neurons`, and `batch_size` values, it can take a few seconds to over an hour. This bundle includes models that have been prebuilt with `epochs=100`, `neurons=1`, and `batch_size=1`. Note that since the simulator adds randomness to jitters, tunning these parameters may not necessarily yield better outcomes, but may significantly reduce the execution time. You are encourged to try different values.
+🔘 Building a model may take a long time. Depending on the data volume along with the `epochs`, `neurons`, and `batch_size` values, it can take a few seconds to over an hour. This bundle includes models that have been prebuilt with `epochs=1000`, `neurons=64`, and `batch_size=1`. Note that since the simulator adds randomness to jitters, tunning these parameters may not necessarily yield better outcomes, but may significantly reduce the execution time. You are encourged to try different values.
 
-The `build_app` script that you executed in the [Preparing Environment](#preparing-environment) section has already placed the prebuilt models in the `data/ml_results` directory where the models are generated. This means you can start forecasting data without building models. You can manually copy the models as follows.
+The `build_app` script that you executed in the [Preparing Environment](#preparing-environment) section has already placed the prebuilt models in the `data/ml_results` directory where the models are generated. This means you can start forecasting data without building models. If needed, You can manually copy the models as follows.
 
 ❗ CAUTION: The following will overwrite the existing models.
 
@@ -336,11 +336,12 @@ Output:
 
 ```console
 usage: forecast_test_local.py [-h] [-?] [-m MAP] [-f FEATURE] [-g] [-e EPOCHS] [-n NEURONS] [-b BATCH_SIZE]
-                              [-t TEST_DATA_PERCENTAGE] [-v]
+                              [-t TEST_DATA_PERCENTAGE] [-v VERBOSE]
 
 Plots observed and forecasted data for the specified Hazelcast map. It generates an LSTM model for the specified
-map that contains observed data if the model is not already generated. To force generating a model, specify the
-'--generate' option. It will overwrite the previously generated model.
+map that contains observed data if the model is not already generated. To force generating a model, specify the '--
+generate' option. It will overwrite the previously generated model. The models are generated and maintained in the
+'data/ml_results' directory.
 
 options:
   -h, --help            show this help message and exit
@@ -348,21 +349,26 @@ options:
   -m MAP, --map MAP     Hazelcast map that contains observed data (default: stocks)
   -f FEATURE, --feature FEATURE
                         Feature name (default: stock1-jitter)
-  -g, --generate        Generate model. If specified then creates a new model, otherwise, uses the existing
-                        model. (default: False)
+  -g, --generate        Generate model. If specified then creates a new model, otherwise, uses the existing model.
+                        (default: False)
   -e EPOCHS, --epochs EPOCHS
                         Number of model fit iterations (number of epochs to train the model). This option has no
-                        effect for the existing model. (default: 100)
+                        effect for the existing model. (default: 1000)
   -n NEURONS, --neurons NEURONS
                         Number of neurons in the hidden layer. This option has no effect for the existing model.
-                        (default: 1)
+                        (default: 64)
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                         Batch size. If the existing model is used, then the specified batch size is overwritten
                         with the existing model's batch size. (default: 1)
   -t TEST_DATA_PERCENTAGE, --test_data_percentage TEST_DATA_PERCENTAGE
                         Test data percentage. (default: 0.2)
-  -v, --verbose         Print interim results. (default: False)
+  -v VERBOSE, --verbose VERBOSE
+                        Print interim results. 0 = silent, 1 = progress bar, 2 = one line per epoch. (default: 0)
 ```
+
+There are three (3) neural network layers in this implementation. The `--neurons` option sets the number of input neurons in the first layer. The second layer has the fixed number of 32 neurons. The final output layer has always 1 neuron.
+
+The `--verbose` option is passed into the `Sequential.fit()` and `Sequential.predict()` methods. If you want to observe the progress per epoch for `fit()` and per data point for `predict()`, then set `verbose` to 1 or 2. Note that setting `verbose` greater than 0 will also display additional status such as the predicted values.
 
 ---
 
@@ -477,6 +483,17 @@ digraph DAG {
 
 ![SimuatorForeastJob DAG](images/SimulatorForecastJobDAG.svg)
 
+The following is a list of commands for submitting jobs for all the features.
+
+```bash
+cd_app ml_lstm
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar -f stock1-jitter
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar -f stock1-no-jitter
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar -f stock2-jitter
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar -f stock2-no-jitter
+hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar -f stock1-jitter-large
+```
+
 ### 5. Ingest real-time data
 
 The `simulator-hazelcast-journal.yaml` file is identical to `simulator-hazelcast.yaml` except that it feeds data at a slower pace into the `journal` map. The `journal` map data updates are streamed into the Jet pipeline, which in turn invokes the Python code that generates forecasted values.
@@ -497,6 +514,7 @@ Display the usage.
 ![Terminal](images/terminal.png) Terminal 1
 
 ```bash 
+cd_app ml_lstm
 export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_monitor --help
 ```
@@ -532,11 +550,22 @@ Plot the default feature, `stock1-jitter`.
 ![Terminal](images/terminal.png) Terminal 1
 
 ```bash
+cd_app ml_lstm
 export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_monitor
 ```
 
 ![Forecast Screenshot](images/stock1-jitter-forecast.png)
+
+The following is a list of commands for monitoring all the features.
+
+```bash
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-no-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock2-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock2-no-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter-large
+```  
 
 ---
 
@@ -636,6 +665,10 @@ cd_app simulator/bin_sh
 cd_app ml_lstm
 export PYTHONPATH=`pwd`/src/main/python
 python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-no-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock2-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock2-no-jitter
+python -m padogrid.bundle.hazelcast.ml.forecast_monitor -f stock1-jitter-large
 ```
 
 ---

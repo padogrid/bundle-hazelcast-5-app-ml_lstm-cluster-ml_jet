@@ -44,7 +44,7 @@ class HazelcastLstmDna(TemporalLstmDna):
                        generation time to provide the status that can be logged.
     '''
 
-    def __init__(self, feature="stock1-jitter", hazelcast_client=None, username=None, working_dir=None, verbose=False):
+    def __init__(self, feature="stock1-jitter", hazelcast_client=None, username=None, working_dir=None, verbose=0):
         '''
         Constructs a new HazelcastLstmDna object.
 

@@ -42,10 +42,12 @@ import joblib
 from statsmodels.tsa.stattools import adfuller
 
 from keras.models import model_from_json
-from keras.utils import disable_interactive_logging
+# Available for Python3.10+
+#from keras.utils import disable_interactive_logging
 from keras.layers import Dense
 from keras.layers import LSTM
 from keras.models import Sequential
+from keras.callbacks import EarlyStopping
 import pandas as pd
 
 from padogrid.bundle.dna.dna_client import Dna
@@ -155,7 +157,7 @@ class TemporalLstmDna(Dna):
     # Time attribute name in the value objects queried from data source
     time_attribute = None
     
-    def __init__(self, username=None, working_dir=None, verbose=False):
+    def __init__(self, username=None, working_dir=None, verbose=0):
         '''
         Constructs a new TemporalLstmDna object.
         
@@ -335,7 +337,7 @@ class TemporalLstmDna(Dna):
         forecasts = self.make_forecasts(self.model, test, batch_size, n_lag)
         # inverse transform forecasts and test
         forecasts = self.inverse_transform(self.series, forecasts, self.scaler, series_test_start_index)
-        if self.verbose:
+        if self.verbose > 0:
             print("---------")
             print("forecasts")
             print("---------")
@@ -349,7 +351,7 @@ class TemporalLstmDna(Dna):
         # invert the transforms on the output part test dataset so that we can correctly
         # calculate the RMSE scores
         actual = [row[n_lag:] for row in test]
-        if self.verbose:
+        if self.verbose > 0:
             print()
             print("actual")
             print("------")
@@ -385,15 +387,18 @@ class TemporalLstmDna(Dna):
 
         n_lag = 1
         n_seq = 3
-        self.scaler, self.data_train, self.data_test = self.prepare_data(self.series, batch_size, n_lag, n_seq, test_data_percentage=test_data_percentage)
+        self.scaler, self.data_train, self.data_test, self.validation_data = self.prepare_data(self.series, batch_size, n_lag, n_seq, test_data_percentage=test_data_percentage)
         # We add n_lag to the length of the train dataset to obtain the
         # test start index since y(t) is ahead by the lag:
         # y(t-n_lag) y(t-n_lag+1) ... y(t) y(t+1) ...
         series_test_start_index = len(self.data_train) + n_lag
+        actual = [row[n_lag:] for row in self.data_test]
+        expected_list = self.inverse_transform(self.series, actual, self.scaler, series_test_start_index)
         print("prepared data -> series: %d, batch_size: %d, train_supervised: %d, test_supervised: %d" % (len(self.series), batch_size, len(self.data_train), len(self.data_test)))
        
         # Disable logging steps
-        disable_interactive_logging()
+        #if self.verbose == 0:
+        #    disable_interactive_logging()
 
         model_found = False
         if use_saved_model:
@@ -739,11 +744,14 @@ class TemporalLstmDna(Dna):
 
         train, test = supervised_values[0:n_train], supervised_values[n_train:n_test]
 
+        series_test_start_index = n_train
+        validation_data = scaled_values[series_test_start_index:n_test]
+
         #   train[len(train)-1][1] <=> raw_values[len(train)]
         #   test[0][1] <=> raw_values[len(train)+1]
         #   test[1][1] <=> raw_values[len(train)+2]
         #   test[len(test)-1][1] <=> raw_values[len(train)+len(test)]
-        return scaler, train, test
+        return scaler, train, test, validation_data
 
     def fit_lstm(self, train, n_lag, n_epoch, n_neurons, batch_size):
         '''
@@ -757,15 +765,30 @@ class TemporalLstmDna(Dna):
         # reshape training into [samples, timesteps, features]
         X, y = train[:, 0:n_lag], train[:, n_lag:]
         X = X.reshape(X.shape[0], 1, X.shape[1])
+
+        Xtest, ytest = self.data_test[:, 0:n_lag], self.data_test[:, n_lag:]
+        Xtest = Xtest.reshape(Xtest.shape[0], 1, Xtest.shape[1])
+        
         # design network
         model = Sequential()
         model.add(LSTM(n_neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+        model.add(Dense(32))
         model.add(Dense(y.shape[1]))
         model.compile(loss='mean_squared_error', optimizer='adam')
-        # fit network
-        for i in range(n_epoch):
-            model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
-            model.reset_states()
+        monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, 
+                        verbose=self.verbose, mode='auto', restore_best_weights=True)
+
+        # -----------
+        # Fit network
+        # -----------
+        # Train the neural net automatically by the framework
+        model.fit(X, y, validation_data=(Xtest, ytest), callbacks=[monitor], verbose=self.verbose, epochs=n_epoch, 
+                                         batch_size=batch_size)
+
+        # Train the neural net manually instead of using the framework.
+        #for i in range(n_epoch):
+        #    model.fit(X, y, epochs=1, batch_size=batch_size, verbose=self.verbose, shuffle=False)
+        #    model.reset_states()
 
         # Create rt_model to be used with real-time data. We set the batch size to 1
         # for rt_model so that we can process a single real-time value at a time. This
@@ -773,6 +796,7 @@ class TemporalLstmDna(Dna):
         if batch_size > 1:
             rt_model = Sequential()
             rt_model.add(LSTM(n_neurons, batch_input_shape=(1, X.shape[1], X.shape[2]), stateful=True))
+            rt_model.add(Dense(32))
             rt_model.add(Dense(y.shape[1]))
             old_weights = model.get_weights();
             rt_model.set_weights(old_weights);
@@ -795,7 +819,7 @@ class TemporalLstmDna(Dna):
         # reshape input pattern to [samples, timesteps, features]
         X = X.reshape(1, 1, len(X))
         # make forecast
-        forecast = model.predict(X, batch_size=batch_size)
+        forecast = model.predict(X, batch_size=batch_size, verbose=self.verbose)
         # convert to array
         return [x for x in forecast[0, :]]
     

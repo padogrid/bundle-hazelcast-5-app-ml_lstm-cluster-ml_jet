@@ -37,7 +37,7 @@
                     "stateful": true,
                     "unroll": false,
                     "time_major": false,
-                    "units": 1,
+                    "units": 64,
                     "activation": "tanh",
                     "recurrent_activation": "sigmoid",
                     "use_bias": true,
@@ -92,6 +92,44 @@
                     "name": "dense",
                     "trainable": true,
                     "dtype": "float32",
+                    "units": 32,
+                    "activation": "linear",
+                    "use_bias": true,
+                    "kernel_initializer": {
+                        "module": "keras.initializers",
+                        "class_name": "GlorotUniform",
+                        "config": {
+                            "seed": null
+                        },
+                        "registered_name": null
+                    },
+                    "bias_initializer": {
+                        "module": "keras.initializers",
+                        "class_name": "Zeros",
+                        "config": {},
+                        "registered_name": null
+                    },
+                    "kernel_regularizer": null,
+                    "bias_regularizer": null,
+                    "activity_regularizer": null,
+                    "kernel_constraint": null,
+                    "bias_constraint": null
+                },
+                "registered_name": null,
+                "build_config": {
+                    "input_shape": [
+                        1,
+                        64
+                    ]
+                }
+            },
+            {
+                "module": "keras.layers",
+                "class_name": "Dense",
+                "config": {
+                    "name": "dense_1",
+                    "trainable": true,
+                    "dtype": "float32",
                     "units": 3,
                     "activation": "linear",
                     "use_bias": true,
@@ -119,7 +157,7 @@
                 "build_config": {
                     "input_shape": [
                         1,
-                        1
+                        32
                     ]
                 }
             }

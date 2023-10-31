@@ -128,17 +128,18 @@ def plot_forecasts(train_time_list, train_data_list, time_list, test_data_list, 
 
 parser = argparse.ArgumentParser(description="Plots observed and forecasted data for the specified Hazelcast map. "
     + "It generates an LSTM model for the specified map that contains observed data if the model is not already generated. "
-    + "To force generating a model, specify the '--generate' option. It will overwrite the previously generated model.",
+    + "To force generating a model, specify the '--generate' option. It will overwrite the previously generated model. "
+    + "The models are generated and maintained in the 'data/ml_results' directory.",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-?", action="store_true", help="show this help message and exit")
 parser.add_argument("-m", "--map", default="stocks", help="Hazelcast map that contains observed data")
 parser.add_argument("-f", "--feature", default="stock1-jitter", help="Feature name")
 parser.add_argument("-g", "--generate", action="store_true", help="Generate model. If specified then creates a new model, otherwise, uses the existing model.")
-parser.add_argument("-e", "--epochs", default=100, type=int, help="Number of model fit iterations (number of epochs to train the model). This option has no effect for the existing model.")
-parser.add_argument("-n", "--neurons", default=1, type=int, help="Number of neurons in the hidden layer. This option has no effect for the existing model.")
+parser.add_argument("-e", "--epochs", default=1000, type=int, help="Number of model fit iterations (number of epochs to train the model). This option has no effect for the existing model.")
+parser.add_argument("-n", "--neurons", default=64, type=int, help="Number of neurons in the hidden layer. This option has no effect for the existing model.")
 parser.add_argument("-b", "--batch_size", default=1, type=int, help="Batch size. If the existing model is used, then the specified batch size is overwritten with the existing model's batch size.")
 parser.add_argument("-t", "--test_data_percentage", default=0.2, type=float, help="Test data percentage.")
-parser.add_argument("-v", "--verbose", action="store_true", help="Print interim results.")
+parser.add_argument("-v", "--verbose", default=0, type=int, help="Print interim results. 0 = silent, 1 = progress bar, 2 = one line per epoch.")
 args = vars(parser.parse_args())
 
 # '-?' in addition to '-h', '--help'
@@ -161,8 +162,7 @@ if test_data_percentage <= 0 or test_data_percentage >= 1:
 epochs = args["epochs"]
 neurons = args["neurons"]
 batch_size = args["batch_size"]
-
-is_verbose = args["verbose"]
+verbose = args["verbose"]
 
 print()
 print("---------------------------------------")
@@ -194,7 +194,7 @@ client = hazelcast.HazelcastClient(cluster_name="ml_jet", portable_factories=Por
 
 # HazelcastLstmDna expects the Hazelcast map to contain JSON objects with the specified
 # numerical feature (attributes).
-dna = HazelcastLstmDna(feature, client, working_dir=working_dir, verbose=is_verbose)
+dna = HazelcastLstmDna(feature, client, working_dir=working_dir, verbose=verbose)
 
 # --------------------------------------------------------------------------
 # Execute locally
@@ -226,7 +226,7 @@ if jresult != None:
 
     plot_forecasts(train_time_list, train_data_list, time_list, test_data_list, predicted_list, time_delta="1 day")
 
-    if is_verbose:
+    if verbose > 0:
         print()
         print("-------------")
         print("test_data_list")
