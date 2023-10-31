@@ -89,7 +89,7 @@ pip install -r src/main/python/requirements.txt
 sudo apt install python3.10-venv
 ```
 
-❗ If you will be using the accompanied Jupyter notebooks in JupyterLab then you must **restart JupyterLab after you have installed `requrements.txt`**. This is because [HoloViews](https://holoviews.org/index.html) used by the notebooks requires Jupyter integration. If you are running this bundle in a PadoGrid container, then you can restart Jupyter Lab by stopping it as follows. The container will automatically restart JupyterLab if it is not running. Note that you may need to readjust the JupyerLab windows after a restart.
+❗ If you will be using the accompanied Jupyter notebooks in JupyterLab then you must **restart JupyterLab after you have installed `requrements.txt`**. This is because [HoloViews](https://holoviews.org/index.html) used by the notebooks requires Jupyter integration. If you are running this bundle in a PadoGrid container, then you can restart JupyterLab by stopping it as follows. The container will automatically restart JupyterLab if it is not running. Note that you may need to readjust the JupyerLab windows after a restart.
 
 ```bash
 stop_jupyter
@@ -267,13 +267,13 @@ is_debug_enabled = True
 
 ## Startup Sequence
 
-❗ If you are using Jupyter Lab or VS Code terminals, then do NOT start the cluster from there. The Jet job will terminate with the following exception otherwise.
+❗ If you are using JupyterLab or VS Code terminals, then do NOT start the cluster from there. The Jet job will terminate with the following exception otherwise.
 
 ```console
 Caused by: java.io.IOException: Python process died before completing initialization
 ```
 
-**You must start the cluster outside of Jupyter Lab or VS Code terminals to avoid the above exception. This seems to be a limitation of Jet.**
+**You must start the cluster outside of JupyterLab or VS Code terminals to avoid the above exception. This seems to be a limitation of Jet.**
 
 ### 1. Start Hazelcast cluster and Management Center
 
@@ -289,7 +289,7 @@ show_cluster
 
 ### 2. Ingest simulated data into Hazelcast
 
-The `maxCount` in the `simulator-hazelcast.yaml` file is set to ingest 2600 entries to the `stocks` map. You can change it to another value as needed.
+The `maxCount` parameter in the `simulator-hazelcast.yaml` file is set to ingest 2600 entries to the `stocks` map. You can change it to another value as needed.
 
 ![Terminal](images/terminal.png) Terminal 1
 
@@ -300,7 +300,7 @@ cd_app simulator/bin_sh
 
 ### 3. Build LSTM model
 
-To run Python, you must have Python 3.10 installed along with the required modules showin in the [`requirements.txt`](apps/ml_lstm/src/main/python/requirements.txt) file. The Python package versions used to test this bundle is listed in the [`requirements-versions.txt`](apps/ml_lstm/src/main/python/requirements-versions.txt) file. In addition to the required modules, `PYTHONPATH` must include this bundle's Python source directory. It is automatically set when you ran the `build_app` script in the [Build Steps](#build-steps) section, but if you are running from a new terminal then you can set it as follows.
+To run Python, you must have Python 3.10 installed along with the required modules shown in the [`requirements.txt`](apps/ml_lstm/src/main/python/requirements.txt) file. The Python package versions used to test this bundle is listed in the [`requirements-versions.txt`](apps/ml_lstm/src/main/python/requirements-versions.txt) file. In addition to the required modules, `PYTHONPATH` must include this bundle's Python source directory. It is automatically set when you run the `build_app` script in the [Build Steps](#build-steps) section, but if you are running from a new terminal then you can set it as follows.
 
 ![Terminal](images/terminal.png) Terminal 1, Terminal 2, Terminal 3
 
