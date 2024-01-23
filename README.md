@@ -259,9 +259,9 @@ is_debug_enabled = True
 ## Hazelcast Jet Performance Observations
 
 1. Connecting Management Center (MC) to Hazelcast cluster spawns an extremely large number of threads. It is typical to see 450-780 threads with MC vs. 120-128 threads without MC.
-1. Hazelcast members use excessive CPUs at idle. It is typical for each member to consume 15-25% of CPU with a Python job submitted without having any activities. For our demo, no activities means that the simulator was not publishing real-time data during the idle time. This means the Python function in the Jet pipeline is never invoked at idle.
+1. Hazelcast members use excessive CPUs at idle. It is typical for each member to consume 15-25% of CPU with a Python job submitted without having any activities. For our demo, no activities means no real-time data published by the simulator.
 1. Canceling all jobs brings each member's CPU down to 0.2% as expected. The high number of threads, on the other hand, remains the same with MC still running.
-1. Stopping MC immediately brings down the number of threads to 120-128 threads with a single Python job running and 103-113 threads without any job running.
+1. Stopping MC immediately brings down the number of threads to 120-128 threads with a single Python job running and 103-113 threads with all the jobs canceled.
 
 ---
 
