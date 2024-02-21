@@ -606,7 +606,7 @@ First, install Mosquitto as described in the [Install/Building Mosquitto](https:
 
 ```bash
 # Create the default cluster, mymosquitto
-make_cluster -product mosquitto
+create_cluster -product mosquitto
 
 # Start the virtual cluster
 start_cluster -cluster mymosquitto
@@ -740,7 +740,7 @@ This occurs when you have a *slim* version of Hazelcast. Install a full version 
 
 ```bash
 install_padogrid -product hazelcast-oss
-update_products -product hazelcast-oss
+update_padogrid -product hazelcast-oss
 ```
 
 Make sure to restart the Hazelcast cluster after installation.
