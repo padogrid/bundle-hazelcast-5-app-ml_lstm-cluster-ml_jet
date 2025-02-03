@@ -33,7 +33,7 @@ from pandas import DataFrame
 from pandas import Series
 from pandas import concat
 from datetime import datetime
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import root_mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 # For persisting scaler
 #from sklearn.externals import joblib
@@ -427,7 +427,7 @@ class TemporalLstmDna(Dna):
             # print('forecast the entire training dataset...')
             # start_time = time.time()
             # train_predicted_list, train_expected_list = self.__forecast(self.data_train, batch_size, n_lag)
-            # jresult['TrainRmse'] = math.sqrt(mean_squared_error(train_expected_list, train_predicted_list))
+            # jresult['TrainRmse'] = math.sqrt(root_mean_squared_error(train_expected_list, train_predicted_list))
             # print('   took: %f sec' % (time.time() - start_time))
 
         # forecast test data
@@ -465,7 +465,7 @@ class TemporalLstmDna(Dna):
         jresult['TimeIntervalInSec'] = time_interval_in_sec
 
         # Calculate RMSE
-        rmse = math.sqrt(mean_squared_error(expected_list, predicted_list, squared=False))
+        rmse = math.sqrt(root_mean_squared_error(expected_list, predicted_list))
         spread = max(list(map(max, expected_list))) - min(list(map(max, expected_list)))
         jresult['Rmse'] = rmse
         jresult['NormalizedRmse'] = rmse / spread
@@ -769,9 +769,26 @@ class TemporalLstmDna(Dna):
         Xtest, ytest = self.data_test[:, 0:n_lag], self.data_test[:, n_lag:]
         Xtest = Xtest.reshape(Xtest.shape[0], 1, Xtest.shape[1])
         
+        # keras 3.x
+        #model = Sequential()
+        #model.add(Input(batch_shape=X_train.shape))
+        #model.add(LSTM(units=4, stateful=True))
+        #model.add(Dense(1))
+        #model.compile(loss='mean_squared_error', optimizer='adam')
+        #model.fit(X_train, y_train, epochs=100, batch_size=1,)
+
         # design network
+        #model = Sequential()
+        #model.add(LSTM(n_neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+        #model.add(Dense(32))
+        #model.add(Dense(y.shape[1]))
+        #model.compile(loss='mean_squared_error', optimizer='adam')
+        #monitor = EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=5, 
+        #                verbose=self.verbose, mode='auto', restore_best_weights=True)
+
         model = Sequential()
-        model.add(LSTM(n_neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+        #model.add(Input(batch_shape=X_train.shape))
+        model.add(LSTM(n_neurons, stateful=True))
         model.add(Dense(32))
         model.add(Dense(y.shape[1]))
         model.compile(loss='mean_squared_error', optimizer='adam')
@@ -1128,7 +1145,7 @@ class TemporalLstmDna(Dna):
             pass
 
         # serialize weights to HDF5
-        self.model.save_weights(file_path + '.h5')
+        self.model.save_weights(file_path + '.weights.h5')
            
         # Save scaler
         scaler_file_path = file_path + '.scaler'
@@ -1176,7 +1193,7 @@ class TemporalLstmDna(Dna):
             json_file.close()
             loaded_model = model_from_json(loaded_model_json)
             # load weights into the loaded model
-            loaded_model.load_weights(file_path + '.h5')
+            loaded_model.load_weights(file_path + '.weights.h5')
             loaded_model.compile(loss='mean_squared_error', optimizer='adam')
             self.model = loaded_model
             
