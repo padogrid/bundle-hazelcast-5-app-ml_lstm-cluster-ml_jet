@@ -65,3 +65,4 @@ apps/perf_test
 __init__.*
 __pycache__
 *.xml0
+*.ipynb.layout

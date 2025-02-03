@@ -25,7 +25,9 @@ fi
 
 # Set the current PadoGrid version in pom.xml
 pushd $APP_DIR > /dev/null
-sed -i$__SED_BACKUP -e "s|<padogrid.version>.*$|<padogrid.version>$PADOGRID_VERSION</padogrid.version>|g" pom.xml
+sed -i$__SED_BACKUP -e "s|<padogrid.version>.*$|<padogrid.version>$PADOGRID_VERSION</padogrid.version>|g" \
+                    -e "s|<hazelcast.version>.*$|<hazelcast.version>$HAZELCAST_VERSION</hazelcast.version>|g" \
+                    pom.xml
 popd > /dev/null
 
 # Install the required padogrid packages to the local repo
@@ -65,6 +67,12 @@ if [ ! -d "$APP_DIR/simulator" ]; then
    sed -i$__SED_BACKUP -e "s/<cluster\-name>.*/<cluster\-name>ml_jet<\/cluster-name>/" "$APPS_DIR/simulator/etc/hazelcast-client.xml"
 
    echo "+ Building simulator binaries..."
+   # Update hazelcast version for the simulator
+   pushd $APPS_DIR/simulator > /dev/null
+   sed -i$__SED_BACKUP -e "s|<hazelcast.version>.*$|<hazelcast.version>$HAZELCAST_VERSION</hazelcast.version>|g" \
+                       pom.xml
+   popd > /dev/null
+   # Build simulator
    pushd $APPS_DIR/simulator/bin_sh > /dev/null
    ./build_app
    popd > /dev/null
