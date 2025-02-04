@@ -71,7 +71,7 @@ clusters
 
 ## Python Installation
 
-This bundle requires Python 3.10 due to conflicts between Python modules and Hazelcast Jet.
+This bundle requires Python 3.10 due to the conflicts between Python modules and Hazelcast Jet.
 
 The following is an Anaconda example. *Note that Anaconda is NOT required to run this bundle.*
 
