@@ -588,7 +588,7 @@ top -p $(pgrep -d " " "java|python" |sed "s/ / -p /g")
 
 ## Integrating MQTT Virtual Cluster
 
-This bundle includes an MQTT virtual cluster connector for briding MQTT and Hazelcast. The included `HazelcastJsonConnector` bridges MQTT topics to Hazelcast maps by converting the topic names by replacing `/` with `_` (underscore) and supplying unique Hazelcast map keys. The map keys come in the form of sequential numbers, UUID, time, or values extracted from the JSON payloads.
+This bundle includes an MQTT virtual cluster connector for bridging MQTT and Hazelcast. The included `HazelcastJsonConnector` bridges MQTT topics to Hazelcast maps by converting the topic names by replacing `/` with `_` (underscore) and supplying unique Hazelcast map keys. The map keys come in the form of sequential numbers, UUID, time, or values extracted from the JSON payloads.
 
 To use the MQTT virtual cluster named `edge`, follow the steps below.
 
