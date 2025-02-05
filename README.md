@@ -611,6 +611,12 @@ create_cluster -product mosquitto
 start_cluster -cluster mymosquitto
 ```
 
+### 2. Start Hazelcast cluster
+
+```bash
+start_cluster -cluster ml_jet
+```
+
 ❗ Do not switch into `mymosquitto`.  All of the subsequent Hazelcast commands must be executed in the Hazelcast cluster context, and not the Mosquitto cluster. If you are unsure, then execute the following switch command to set the Hazelcast cluster context.
 
 ```bash
@@ -618,7 +624,7 @@ start_cluster -cluster mymosquitto
 switch_cluster ml_jet
 ```
 
-### 2. Ingest initial data to Hazelcast cluster
+### 3. Ingest initial data to Hazelcast cluster
 
 ![Terminal](images/terminal.png) Terminal 1
 
@@ -629,7 +635,7 @@ cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-hazelcast.yaml
 ```
 
-### 3. Submit job
+### 4. Submit job
 
 ![Terminal](images/terminal.png) Terminal 1
 
@@ -638,7 +644,9 @@ cd_app ml_lstm
 hz-cli -t ml_jet@localhost:5701 submit target/ml-lstm-1.0.3.jar
 ```
 
-### 4. Start MQTT virtual cluster
+### 5. Start MQTT virtual cluster
+
+The following command starts an MQTT virtual cluster with the `HazelcastJsonConnector` plugin for bridging the `journal` MQTT topic to the Hazelcast `journal` map.
 
 ![Terminal](images/terminal.png) Terminal 2
 
@@ -647,7 +655,7 @@ cd_app ml_lstm
 vc_start -config etc/mqttv5-hazelcast.yaml
 ```
 
-### 5. Ingest real-time data to MQTT virtual cluster
+### 6. Ingest real-time data to MQTT virtual cluster
 
 ![Terminal](images/terminal.png) Terminal 3
 
@@ -656,7 +664,7 @@ cd_app simulator/bin_sh
 ./simulator -simulator-config ../etc/simulator-mqtt-journal.yaml
 ```
 
-### 6. Plot real-time forecasts
+### 7. Plot real-time forecasts
 
 ![Terminal](images/terminal.png) Terminal 1
 
